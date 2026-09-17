@@ -14,6 +14,7 @@
 
 <title>🍅🥔 짠포마토의 기록</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -1021,17 +1022,23 @@ function ensureArr(val) {
 }
 
 let isFirebaseLoaded = false;
-db.ref("users/" + mySyncKey).once('value', function(snapshot) {
-  let data = snapshot.val();
-  if(data) {
-    if (data.zzanto) {
-       appData.zzanto = Object.assign(appData.zzanto, data.zzanto);
-       appData.jjangam = Object.assign(appData.jjangam, data.jjangam || {});
-       appData.joint = Object.assign(appData.joint, data.joint || {});
+firebase.auth().signInAnonymously().then(function() {
+  db.ref("users/" + mySyncKey).once('value', function(snapshot) {
+    let data = snapshot.val();
+    if(data) {
+      if (data.zzanto) {
+         appData.zzanto = Object.assign(appData.zzanto, data.zzanto);
+         appData.jjangam = Object.assign(appData.jjangam, data.jjangam || {});
+         appData.joint = Object.assign(appData.joint, data.joint || {});
+      }
     }
-  }
-  isFirebaseLoaded = true;
-  switchProfile('zzanto'); 
+    isFirebaseLoaded = true;
+    switchProfile('zzanto');
+  });
+}).catch(function(err) {
+  console.error("Firebase 인증 실패:", err);
+  alert("데이터 연결에 실패했어요. 인터넷 연결을 확인하고 새로고침 해주세요.");
+  switchProfile('zzanto');
 });
 
 /* ================= 공통 유틸 ================= */
