@@ -208,6 +208,7 @@ input.ti:focus{border-color:var(--main-color);}
 /* 랜덤스쿱 카드 저장용 표: 좁은 화면에서는 자동 배치, 일정 너비 이상에서만 칸 비율 고정 */
 @media (min-width:480px){
   .sc-card-tbl{table-layout:fixed;}
+  .sc-card-tbl th, .sc-card-tbl td.sc-card-lbl{white-space:nowrap;font-size:12.5px;}
   .sc-card-tbl th:nth-child(1),.sc-card-tbl td:nth-child(1){width:14%;}
   .sc-card-tbl th:nth-child(n+2):nth-child(-n+6),.sc-card-tbl td:nth-child(n+2):nth-child(-n+6){width:11%;}
   .sc-card-tbl th:nth-child(7),.sc-card-tbl td:nth-child(7){width:17%;}
@@ -2128,7 +2129,7 @@ function bScCard(){
   } else {
     const wd=gScWk(scY,scM,scWk); const days=["월","화","수","목","금"]; let rows="";
     (wd.rows || []).forEach((row, ri)=>{
-      let tds = `<td style="border:1px solid var(--sub-color);font-weight:700;background:var(--sub-bg);text-align:center;padding:8px;">${row.label}</td>`;
+      let tds = `<td class="sc-card-lbl" style="border:1px solid var(--sub-color);font-weight:700;background:var(--sub-bg);text-align:center;padding:8px;">${row.label}</td>`;
       (row.vals || []).forEach((v,i)=>{ 
         if(i<5) {
             let disp = v || "";
