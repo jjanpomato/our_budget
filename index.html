@@ -1599,9 +1599,11 @@ function recalcScTotals(wk){
 }
 window.updateScVal=(wk,ri,vi,val)=>{
   const wd=gScWk(scY,scM,wk); wd.rows[ri].vals[vi]=val;
-  if(ri===4) {
-    // 큰파츠 1개당 1,000원으로 환산해 그날 총 금액에 자동 반영
-    const dayTot=(parseInt(String(val).replace(/[^0-9]/g,''))||0)*1000;
+  if(ri===3 || ri===4) {
+    // 그날 총 금액 = 보너스🍅(금액 그대로) + 큰파츠(1개당 1,000원)
+    const bonusTomato=parseInt(String(wd.rows[3].vals[vi]).replace(/[^0-9]/g,''))||0;
+    const bigParts=parseInt(String(wd.rows[4].vals[vi]).replace(/[^0-9]/g,''))||0;
+    const dayTot=bonusTomato+bigParts*1000;
     wd.rows[5].vals[vi]=String(dayTot);
     const cell=document.getElementById(`sc_day_tot_${wk}_${vi}`); if(cell)cell.value=fmtStr(dayTot);
     recalcScTotals(wk);
