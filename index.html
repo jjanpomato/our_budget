@@ -2134,7 +2134,7 @@ function bScCard(){
         if(i<5) {
             let disp = v || "";
             if(disp !== "" && ri === 5) {
-                disp = "₩" + fmt(v);
+                disp = fmt(v);
             }
             tds+=`<td style="border:1px solid var(--sub-color);text-align:center;padding:8px;">${disp}</td>`;
         } 
