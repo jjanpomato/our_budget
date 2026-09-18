@@ -1554,7 +1554,7 @@ function bSWUI(){
       row.vals.forEach((v,vi)=>{
         if (vi < 5) { // 월~금
             if (ri === 5) {
-                cells+=`<td><input class="lt-inp" value="${fmtStr(v)}" oninput="updateScVal(${wk},${ri},${vi},fmtInp(this))" style="text-align:center;font-size:13px;padding:4px 0;"></td>`;
+                cells+=`<td><input class="lt-inp" id="sc_day_tot_${wk}_${vi}" value="${fmtStr(v)}" readonly style="text-align:center;font-size:13px;padding:4px 0;background:var(--sub-bg);color:var(--text-muted);cursor:not-allowed;"></td>`;
             } else {
                 cells+=`<td><input class="lt-inp" value="${v||""}" oninput="updateScVal(${wk},${ri},${vi},this.value)" style="text-align:center;font-size:13px;padding:4px 0;"></td>`;
             }
@@ -1577,50 +1577,45 @@ function bSWUI(){
     const wrap2=document.createElement("div");wrap2.style.overflowX="auto";wrap2.appendChild(tbl);
     card.appendChild(wrap2); 
     const totRow=document.createElement("div");totRow.style.cssText="display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--sub-color);";
-    totRow.innerHTML=`<span style="font-size:13px;font-weight:700;color:var(--text-muted);">주간 총금액 (월~금 + 보너스)</span><input class="ti" id="sc_tot_inp_${wk}" value="${fmtStr(wd.weekTotal)}" placeholder="총 금액" oninput="updateScWeekTotal(${wk},fmtInp(this))" style="max-width:160px;text-align:right;">`;
+    totRow.innerHTML=`<span style="font-size:13px;font-weight:700;color:var(--text-muted);">주간 총금액 (월~금 + 보너스)</span><input class="ti" id="sc_tot_inp_${wk}" value="${fmtStr(wd.weekTotal)}" readonly style="max-width:160px;text-align:right;background:var(--sub-bg);color:var(--text-muted);cursor:not-allowed;">`;
     card.appendChild(totRow); wrap.appendChild(card);
   }
   document.getElementById("scpill").textContent="월 총 ₩"+fmt(totalAll);
 }
 
 window.updateScDate=(wk,val)=>{gScWk(scY,scM,wk).dateRange=val;sSc();};
+
+// 총 금액(일별 합 + 보너스)을 다시 계산해서 화면에 반영
+function recalcScTotals(wk){
+  const wd=gScWk(scY,scM,wk);
+  let sum=0;
+  wd.rows[5].vals.forEach(v=>{ sum+=(parseInt(String(v).replace(/[^0-9]/g,''))||0); });
+  sum += (parseInt(String(wd.bonusAmt).replace(/[^0-9]/g,''))||0);
+  wd.weekTotal=sum;
+  const t=document.getElementById("sc_tot_inp_"+wk); if(t)t.value=fmtStr(sum);
+  const b=document.getElementById("sctot"+wk); if(b)b.textContent="₩"+fmt(sum);
+  let totalAll=0;for(let w=1;w<=4;w++)totalAll+=(+gScWk(scY,scM,w).weekTotal||0);
+  document.getElementById("scpill").textContent="월 총 ₩"+fmt(totalAll);
+}
 window.updateScVal=(wk,ri,vi,val)=>{
   const wd=gScWk(scY,scM,wk); wd.rows[ri].vals[vi]=val;
-  if(ri===5) { 
-    let sum=0; 
-    // 월~금 값 합산
-    wd.rows[ri].vals.forEach(v=>{ sum+=(parseInt(String(v).replace(/[^0-9]/g,''))||0); });
-    // 보너스 금액 합산
-    sum += (parseInt(String(wd.bonusAmt).replace(/[^0-9]/g,''))||0);
-    
-    wd.weekTotal=sum; const t=document.getElementById("sc_tot_inp_"+wk); if(t)t.value=fmtStr(sum);
-    document.getElementById("sctot"+wk).textContent="₩"+fmt(sum);
-    let totalAll=0;for(let w=1;w<=4;w++)totalAll+=(+gScWk(scY,scM,w).weekTotal||0);
-    document.getElementById("scpill").textContent="월 총 ₩"+fmt(totalAll);
-  } sSc();
+  if(ri===4) {
+    // 큰파츠 1개당 1,000원으로 환산해 그날 총 금액에 자동 반영
+    const dayTot=(parseInt(String(val).replace(/[^0-9]/g,''))||0)*1000;
+    wd.rows[5].vals[vi]=String(dayTot);
+    const cell=document.getElementById(`sc_day_tot_${wk}_${vi}`); if(cell)cell.value=fmtStr(dayTot);
+    recalcScTotals(wk);
+  }
+  sSc();
 };
 window.updateScBonusAmt=(wk,val)=>{
   const wd=gScWk(scY,scM,wk); wd.bonusAmt=val;
-  let sum=0; 
-  // 월~금 값 합산
-  wd.rows[5].vals.forEach(v=>{ sum+=(parseInt(String(v).replace(/[^0-9]/g,''))||0); });
-  // 보너스 금액 합산
-  sum += (parseInt(String(val).replace(/[^0-9]/g,''))||0);
-  
-  wd.weekTotal=sum; const t=document.getElementById("sc_tot_inp_"+wk); if(t)t.value=fmtStr(sum);
-  document.getElementById("sctot"+wk).textContent="₩"+fmt(sum);
-  let totalAll=0;for(let w=1;w<=4;w++)totalAll+=(+gScWk(scY,scM,w).weekTotal||0);
-  document.getElementById("scpill").textContent="월 총 ₩"+fmt(totalAll);
+  recalcScTotals(wk);
   sSc();
 };
 window.updateScBonusChk=(wk,field,isChecked)=>{
   const wd=gScWk(scY,scM,wk); wd[field]=isChecked;
   sSc();
-};
-window.updateScWeekTotal=(wk,val)=>{
-  gScWk(scY,scM,wk).weekTotal=val;sSc(); document.getElementById("sctot"+wk).textContent="₩"+fmt(val);
-  let totalAll=0;for(let w=1;w<=4;w++)totalAll+=(+gScWk(scY,scM,w).weekTotal||0);
-  document.getElementById("scpill").textContent="월 총 ₩"+fmt(totalAll);
 };
 
 /* ================= 4: 저축/투자 ================= */
