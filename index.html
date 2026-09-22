@@ -230,7 +230,7 @@ input.ti:focus{border-color:var(--main-color);}
   </div>
   <div class="header-title-row">
     <span style="font-size:28px;">🍅🥔</span>
-    <h1>짠포마토의 기록 <span class="ver">v1.7</span></h1>
+    <h1>짠포마토의 기록 <span class="ver">v1.8</span></h1>
   </div>
   <div class="profile-switcher">
     <button id="prof_zzanto" class="prof-btn active" onclick="switchProfile('zzanto')">🍅 짠토</button>
@@ -1009,7 +1009,7 @@ let appData = {
   joint:   { goalTitle: "신혼집 마련 🏠", goalAmount: "130000000", goalZzanto: "100000000", goalJjangam: "30000000", cp:{}, cpCats:[], cpLiabs:[] }
 };
 
-let activeProfile = 'zzanto'; 
+let activeProfile = localStorage.getItem("activeProfile") || 'zzanto';
 let currentTab = 0;
 let jpTab = 0; // 커플 대시보드 내부 서브탭
 let iD, eD, lgD, nvD, scD, asD, iCats, eCats, nvCats;
@@ -1032,8 +1032,21 @@ function ensureArr(val) {
 }
 
 let isFirebaseLoaded = false;
+let needsRerender = false;
+function isEditingNow() {
+  const el = document.activeElement;
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA');
+}
+// 타이핑 중엔 화면을 다시 그리지 않다가, 입력이 끝나면(포커스 해제) 대기 중이던 실시간 업데이트를 반영
+setInterval(function() {
+  if (needsRerender && isFirebaseLoaded && !isEditingNow()) {
+    needsRerender = false;
+    switchProfile(activeProfile);
+  }
+}, 1500);
+
 firebase.auth().signInAnonymously().then(function() {
-  db.ref("users/" + mySyncKey).once('value', function(snapshot) {
+  db.ref("users/" + mySyncKey).on('value', function(snapshot) {
     let data = snapshot.val();
     if(data) {
       if (data.zzanto) {
@@ -1042,13 +1055,19 @@ firebase.auth().signInAnonymously().then(function() {
          appData.joint = Object.assign(appData.joint, data.joint || {});
       }
     }
-    isFirebaseLoaded = true;
-    switchProfile('zzanto');
+    if (!isFirebaseLoaded) {
+      isFirebaseLoaded = true;
+      switchProfile(activeProfile);
+    } else if (isEditingNow()) {
+      needsRerender = true;
+    } else {
+      switchProfile(activeProfile);
+    }
   });
 }).catch(function(err) {
   console.error("Firebase 인증 실패:", err);
   alert("데이터 연결에 실패했어요. 인터넷 연결을 확인하고 새로고침 해주세요.");
-  switchProfile('zzanto');
+  switchProfile(activeProfile);
 });
 
 /* ================= 공통 유틸 ================= */
@@ -1075,7 +1094,8 @@ window.copySyncLink = function() {
 /* ================= 프로필 & 탭 스위치 ================= */
 function switchProfile(p) {
   activeProfile = p;
-  
+  localStorage.setItem("activeProfile", p);
+
   const bZ = document.getElementById('prof_zzanto');
   const bJ = document.getElementById('prof_jjangam');
   const bP = document.getElementById('prof_zzanpomato');
