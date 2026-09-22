@@ -1009,7 +1009,7 @@ let appData = {
   joint:   { goalTitle: "신혼집 마련 🏠", goalAmount: "130000000", goalZzanto: "100000000", goalJjangam: "30000000", cp:{}, cpCats:[], cpLiabs:[] }
 };
 
-let activeProfile = 'zzanto'; 
+let activeProfile = localStorage.getItem("activeProfile") || 'zzanto';
 let currentTab = 0;
 let jpTab = 0; // 커플 대시보드 내부 서브탭
 let iD, eD, lgD, nvD, scD, asD, iCats, eCats, nvCats;
@@ -1043,12 +1043,12 @@ firebase.auth().signInAnonymously().then(function() {
       }
     }
     isFirebaseLoaded = true;
-    switchProfile('zzanto');
+    switchProfile(activeProfile);
   });
 }).catch(function(err) {
   console.error("Firebase 인증 실패:", err);
   alert("데이터 연결에 실패했어요. 인터넷 연결을 확인하고 새로고침 해주세요.");
-  switchProfile('zzanto');
+  switchProfile(activeProfile);
 });
 
 /* ================= 공통 유틸 ================= */
@@ -1075,7 +1075,8 @@ window.copySyncLink = function() {
 /* ================= 프로필 & 탭 스위치 ================= */
 function switchProfile(p) {
   activeProfile = p;
-  
+  localStorage.setItem("activeProfile", p);
+
   const bZ = document.getElementById('prof_zzanto');
   const bJ = document.getElementById('prof_jjangam');
   const bP = document.getElementById('prof_zzanpomato');
