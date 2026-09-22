@@ -1032,8 +1032,21 @@ function ensureArr(val) {
 }
 
 let isFirebaseLoaded = false;
+let needsRerender = false;
+function isEditingNow() {
+  const el = document.activeElement;
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA');
+}
+// 타이핑 중엔 화면을 다시 그리지 않다가, 입력이 끝나면(포커스 해제) 대기 중이던 실시간 업데이트를 반영
+setInterval(function() {
+  if (needsRerender && isFirebaseLoaded && !isEditingNow()) {
+    needsRerender = false;
+    switchProfile(activeProfile);
+  }
+}, 1500);
+
 firebase.auth().signInAnonymously().then(function() {
-  db.ref("users/" + mySyncKey).once('value', function(snapshot) {
+  db.ref("users/" + mySyncKey).on('value', function(snapshot) {
     let data = snapshot.val();
     if(data) {
       if (data.zzanto) {
@@ -1042,8 +1055,14 @@ firebase.auth().signInAnonymously().then(function() {
          appData.joint = Object.assign(appData.joint, data.joint || {});
       }
     }
-    isFirebaseLoaded = true;
-    switchProfile(activeProfile);
+    if (!isFirebaseLoaded) {
+      isFirebaseLoaded = true;
+      switchProfile(activeProfile);
+    } else if (isEditingNow()) {
+      needsRerender = true;
+    } else {
+      switchProfile(activeProfile);
+    }
   });
 }).catch(function(err) {
   console.error("Firebase 인증 실패:", err);
