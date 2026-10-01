@@ -86,6 +86,8 @@ body{font-family:"Poor Story",cursive;min-height:100vh;display:flex;flex-directi
 .pt{font-size:15px;color:var(--main-color);font-weight:700;}
 input.ti{width:100%;background:var(--input-bg);border:2px solid var(--sub-color);border-radius:10px;color:var(--text-dark);font-family:"Poor Story",cursive;font-size:13px;padding:7px 11px;outline:none;}
 input.ti:focus{border-color:var(--main-color);}
+.sortb{margin-left:4px;border:1px solid var(--sub-color);background:#fff;color:var(--main-color);border-radius:6px;font-size:11px;line-height:1;padding:2px 4px;cursor:pointer;font-family:inherit;font-weight:700;vertical-align:middle;}
+.sortb.on{background:var(--main-color);color:#fff;border-color:var(--main-color);}
 .bsm{border:1.5px solid var(--sub-color);font-size:11px;padding:4px 10px;border-radius:999px;cursor:pointer;font-family:"Poor Story",cursive;font-weight:700;background:var(--sub-bg);color:var(--main-color);}
 .bsm:hover{background:var(--sub-bg-hover);}
 .te{width:100%;border-collapse:collapse;font-size:15px;}
@@ -588,11 +590,11 @@ input.ti:focus{border-color:var(--main-color);}
       <div class="dtw" style="overflow-x:auto;">
         <table class="dt" style="min-width:560px;">
           <thead><tr>
-            <th style="width:100px">자산구분</th>
-            <th style="width:110px">중분류</th>
-            <th style="width:110px">소분류</th>
-            <th>종목(내용)</th>
-            <th style="width:130px">금액 (원)</th>
+            <th style="width:100px">자산구분<button class="sortb" data-t="cashDetails" data-k="type" onclick="sortAs('cashDetails','type')">⇅</button></th>
+            <th style="width:110px">중분류<button class="sortb" data-t="cashDetails" data-k="bc" onclick="sortAs('cashDetails','bc')">⇅</button></th>
+            <th style="width:110px">소분류<button class="sortb" data-t="cashDetails" data-k="sc" onclick="sortAs('cashDetails','sc')">⇅</button></th>
+            <th>종목(내용)<button class="sortb" data-t="cashDetails" data-k="tk" onclick="sortAs('cashDetails','tk')">⇅</button></th>
+            <th style="width:130px">금액 (원)<button class="sortb" data-t="cashDetails" data-k="amt" onclick="sortAs('cashDetails','amt')">⇅</button></th>
             <th style="width:44px">삭제</th>
           </tr></thead>
           <tbody id="cashtb"></tbody>
@@ -606,13 +608,13 @@ input.ti:focus{border-color:var(--main-color);}
       <div class="dtw" style="overflow-x:auto;">
         <table class="dt" style="min-width:680px;">
           <thead><tr>
-            <th style="width:100px">자산구분</th>
-            <th style="width:110px">대분류</th>
-            <th style="width:110px">중분류</th>
-            <th style="width:110px">소분류</th>
-            <th>종목</th>
-            <th style="width:55px">주수</th>
-            <th style="width:130px">금액 (원)</th>
+            <th style="width:100px">자산구분<button class="sortb" data-t="details" data-k="type" onclick="sortAs(\'details\',\'type\')">⇅</button></th>
+            <th style="width:110px">대분류<button class="sortb" data-t="details" data-k="mc" onclick="sortAs(\'details\',\'mc\')">⇅</button></th>
+            <th style="width:110px">중분류<button class="sortb" data-t="details" data-k="bc" onclick="sortAs(\'details\',\'bc\')">⇅</button></th>
+            <th style="width:110px">소분류<button class="sortb" data-t="details" data-k="sc" onclick="sortAs(\'details\',\'sc\')">⇅</button></th>
+            <th>종목<button class="sortb" data-t="details" data-k="tk" onclick="sortAs(\'details\',\'tk\')">⇅</button></th>
+            <th style="width:70px">주수<button class="sortb" data-t="details" data-k="qty" onclick="sortAs(\'details\',\'qty\')">⇅</button></th>
+            <th style="width:130px">금액 (원)<button class="sortb" data-t="details" data-k="amt" onclick="sortAs(\'details\',\'amt\')">⇅</button></th>
             <th style="width:44px">삭제</th>
           </tr></thead>
           <tbody id="asdtb"></tbody>
@@ -625,7 +627,7 @@ input.ti:focus{border-color:var(--main-color);}
       <div class="stit"><h3 style="color:#e8453c;">⚠️ 부채 (대출) 내역</h3></div>
       <div class="dtw" style="overflow-x:auto; border-color:#ffb3ba;">
         <table class="dt" style="min-width:400px;">
-          <thead><tr style="background:#fff0f0;"><th style="color:#e8453c;">대출/부채 내용</th><th style="width:150px; color:#e8453c;">금액 (원)</th><th style="width:44px">삭제</th></tr></thead>
+          <thead><tr style="background:#fff0f0;"><th style="color:#e8453c;">대출/부채 내용<button class="sortb" data-t="liabilities" data-k="tk" onclick="sortAs('liabilities','tk')">⇅</button></th><th style="width:150px; color:#e8453c;">금액 (원)<button class="sortb" data-t="liabilities" data-k="amt" onclick="sortAs('liabilities','amt')">⇅</button></th><th style="width:44px">삭제</th></tr></thead>
           <tbody id="liabtb"></tbody>
         </table>
         <button class="arb" onclick="aLiab()" style="background:#fff9f9; color:#e8453c; border-top-color:#ffb3ba;">＋ 부채 항목 추가</button>
@@ -1865,6 +1867,7 @@ function rAs(){
     <td><input value="${fmtStr(r.amt)}" style="text-align:right; color:#e8453c;" oninput="gAsD().liabilities[${i}].amt=fmtInp(this);sAs();updateAsTotals();"></td>
     <td style="text-align:center;"><button class="bsm" onclick="gAsD().liabilities.splice(${i},1);sAs();rAs();">✕</button></td></tr>`;
   });
+  paintAsSort();
 }
 window.aCash=()=>{
   let defType = gAsD().typeCats.length > 0 ? gAsD().typeCats[0].name : "";
@@ -1874,6 +1877,30 @@ window.aAD=()=>{
   let defType = gAsD().typeCats.length > 0 ? gAsD().typeCats[gAsD().typeCats.length-1].name : "";
   gAsD().details.push({type:defType,mc:"",bc:"",sc:"",tk:"",qty:"",amt:""});sAs();rAs();
 };
+/* 자산/부채 표 정렬 (엑셀 필터처럼: 같은 버튼 다시 누르면 오름↔내림) */
+let asSort={}; // 표별 {k, dir}
+window.sortAs=(t,k)=>{
+  const st=asSort[t]||{};
+  const dir = st.k===k ? -st.dir : 1; asSort[t]={k,dir};
+  const num = k==="qty"||k==="amt";
+  gAsD()[t].sort((a,b)=>{
+    const va=a[k], vb=b[k];
+    const ea = va===undefined||va===null||va==="", eb = vb===undefined||vb===null||vb==="";
+    if(ea||eb) return ea===eb?0:(ea?1:-1); // 빈 칸은 항상 맨 아래
+    const c = num ? (parseFloat(String(va).replace(/,/g,""))||0)-(parseFloat(String(vb).replace(/,/g,""))||0)
+                  : String(va).localeCompare(String(vb),"ko",{numeric:true});
+    return c*dir;
+  });
+  sAs(); rAs();
+};
+function paintAsSort(){
+  document.querySelectorAll(".sortb").forEach(b=>{
+    const st=asSort[b.dataset.t]||{}, on=st.k===b.dataset.k;
+    b.classList.toggle("on",on);
+    b.textContent = on ? (st.dir===1?"▲":"▼") : "⇅";
+    b.title = on ? (st.dir===1?"오름차순 (다시 누르면 내림차순)":"내림차순 (다시 누르면 오름차순)") : "정렬";
+  });
+}
 window.aLiab=()=>{gAsD().liabilities.push({tk:"",amt:""});sAs();rAs();};
 
 window.addTypeCatUI=()=>{const name=document.getElementById("typecni").value.trim(); if(name){gAsD().typeCats.push({name,color:selP.type}); document.getElementById("typecni").value=""; sAs(); rAs();}};
