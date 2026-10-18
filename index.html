@@ -1522,14 +1522,14 @@ window.aEF=()=>{gED(eY,eM).fixed.push({cat:eCats[0]?eCats[0].name:"",desc:"",amo
 window.aED=()=>{gED(eY,eM).dated.push({date:"",cat:eCats[0]?eCats[0].name:"",desc:"",amount:"",over:"",exclude:false});sE();rExp();};
 
 /* ================= 3: 랜덤스쿱 ================= */
-const SC_RULES_OLD=["🍅 달성률 10%당 1스쿱🥄","🍅 네잎클로버 파츠는 한 번 더!🍀","🍅 100% 달성시 한 번 더! ✨","🍅 큰 파츠 개당 1,000원💎","🍅 주간 총 금액 다음 주에 매수! 💸"];
-const SC_RULES_DEF=()=>[["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️"],["🍅 10만원 / 5만원 / 1만원 / 5천원 💵"],["🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자"],["🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자"],["🍅 🐟 붕어빵 나오면 한 장 더!"],["🍅 주간 총 금액 다음 주에 매수! 💸"]];
+const SC_RULES_OLD_LIST=[["🍅 달성률 10%당 1스쿱🥄","🍅 네잎클로버 파츠는 한 번 더!🍀","🍅 100% 달성시 한 번 더! ✨","🍅 큰 파츠 개당 1,000원💎","🍅 주간 총 금액 다음 주에 매수! 💸"],["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️","🍅 10만원 / 5만원 / 1만원 / 5천원 💵","🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자","🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자","🍅 🐟 붕어빵 나오면 한 장 더!","🍅 주간 총 금액 다음 주에 매수! 💸"]];
+const SC_RULES_DEF=()=>[["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️"],["🍅 10만원 / 5만원 / 1만원 / 5천원 💵"],["🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자"],["🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자"],["🍅 🐟 붕어빵·✖️ 곱하기·➗ 나누기 나오면 한 장 더!"],["🍅 하루 최대 3장까지! ✋"],["🍅 주간 총 금액 다음 주에 매수! 💸"]];
 function gScRules(y,m){
   if(!scD[y])scD[y]={}; if(!scD[y][m])scD[y][m]={};
   let r = ensureArr(scD[y][m].rules); if(r.length===0) r=SC_RULES_DEF();
-  // 예전 랜덤스쿱 기본 규칙 그대로면 뽑기 규칙으로 교체
+  // 예전 기본 규칙 그대로면 지금 뽑기 규칙으로 교체
   const rv=r.map(x=>Array.isArray(x)?x[0]:x);
-  if(rv.length===SC_RULES_OLD.length && rv.every((v,i)=>v===SC_RULES_OLD[i])) r=SC_RULES_DEF();
+  if(SC_RULES_OLD_LIST.some(o=>rv.length===o.length && rv.every((v,i)=>v===o[i]))) r=SC_RULES_DEF();
   scD[y][m].rules = r.filter(x=>{const v=Array.isArray(x)?x[0]:x;return v!=='규칙'&&v!=='규칙:내용';}); sSc(); return scD[y][m].rules;
 }
 // 뽑기 표 행: count=장수×단가, mul=곱하기, div=나누기, note=기록만, total=그날 합계
@@ -1566,6 +1566,22 @@ function calcScDay(wd,vi){
     else if(r.type==="div") scNums(v).forEach(n=>div*=n);
   });
   return Math.floor(base*mul/div);
+}
+// 그날 뽑은 종이 장수 (금액 장수 + 곱하기·나누기 숫자 개수 + 붕어빵)
+const SC_MAX_PAPERS=3;
+function scPapers(wd,vi){
+  let n=0;
+  wd.rows.forEach(r=>{
+    const v=r.vals[vi];
+    if(r.type==="count"||r.type==="note") n+=scNum(v);
+    else if(r.type==="mul"||r.type==="div") n+=scNums(v).length;
+  });
+  return n;
+}
+// 하루 최대 장수를 넘으면 그날 총 금액 칸을 빨갛게 표시
+function scWarnStyle(wd,vi){
+  const n=scPapers(wd,vi);
+  return n>SC_MAX_PAPERS?{color:"#e8453c",title:`${n}장 뽑았어요! 하루 최대 ${SC_MAX_PAPERS}장이에요`}:{color:"",title:""};
 }
 const SC_WK_DEF=(wk)=>({
     dateRange: wk===1?"8/1~8/7":wk===2?"8/8~8/14":wk===3?"8/15~8/21":"8/22~8/28", 
@@ -1614,7 +1630,7 @@ function bSWUI(){
       row.vals.forEach((v,vi)=>{
         if (vi < 5) { // 월~금
             if (row.type === "total") {
-                cells+=`<td><input class="lt-inp" id="sc_day_tot_${wk}_${vi}" value="${fmtStr(v)}" readonly style="text-align:center;font-size:13px;padding:4px 0;background:var(--sub-bg);color:var(--text-muted);cursor:not-allowed;"></td>`;
+                cells+=`<td><input class="lt-inp" id="sc_day_tot_${wk}_${vi}" value="${fmtStr(v)}" readonly title="${scWarnStyle(wd,vi).title}" style="text-align:center;font-size:13px;padding:4px 0;background:var(--sub-bg);color:${scWarnStyle(wd,vi).color||"var(--text-muted)"};cursor:not-allowed;"></td>`;
             } else {
                 const ph = row.type==="mul"?"×":row.type==="div"?"÷":(row.type==="count"||row.type==="note")?"0":"";
                 const im = row.type==="memo"?"":` inputmode="numeric"`;
@@ -1663,10 +1679,11 @@ function recalcScTotals(wk){
 window.updateScVal=(wk,ri,vi,val)=>{
   const wd=gScWk(scY,scM,wk); wd.rows[ri].vals[vi]=val;
   const totRow=wd.rows.find(r=>r.type==="total");
-  if(totRow && ["count","amt","mul","div"].includes(wd.rows[ri].type)) {
+  if(totRow && ["count","amt","mul","div","note"].includes(wd.rows[ri].type)) {
     const dayTot=calcScDay(wd,vi);
     totRow.vals[vi]=dayTot?String(dayTot):"";
-    const cell=document.getElementById(`sc_day_tot_${wk}_${vi}`); if(cell)cell.value=fmtStr(dayTot);
+    const cell=document.getElementById(`sc_day_tot_${wk}_${vi}`);
+    if(cell){ const w=scWarnStyle(wd,vi); cell.value=fmtStr(dayTot); cell.style.color=w.color||"var(--text-muted)"; cell.title=w.title; }
     recalcScTotals(wk);
   }
   sSc();
