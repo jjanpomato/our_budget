@@ -950,6 +950,16 @@ input.ti:focus{border-color:var(--main-color);}
         💡 <b>예산</b>은 쓰기로 마음먹은 돈, <b>금액</b>은 실제로 계약하거나 쓴 돈이에요. 금액을 🥔짠감·🍅짠토 칸에 누가 얼마씩 내는지 나눠 적어요.<br>
         🧾 <b>낸 돈</b>은 계약금처럼 이미 보낸 돈이고, <b>잔금</b> = 금액 − 낸 돈이에요.
       </div>
+
+      <!-- 🏦 결혼자금 CMA: 짠토·짠감이 각자 CMA에 모은 돈과 목표 달성률 -->
+      <div class="mb" style="margin-top:8px;">
+        <h2>🏦 결혼자금 CMA</h2>
+        <span style="font-size:12px; color:var(--text-muted);">각자 CMA에 모은 돈과 목표 달성률이에요</span>
+      </div>
+      <div class="card-grid" id="cma_cards" style="margin-top:0;"></div>
+      <div id="cma_total" class="ws" style="background:var(--input-bg);"></div>
+      <div id="cma_side_bar" style="display:flex; gap:8px;"></div>
+      <div id="cma_body" style="display:flex; flex-direction:column; gap:12px;"></div>
     </div>
   </div>
 
@@ -974,6 +984,7 @@ input.ti:focus{border-color:var(--main-color);}
       <div id="gs_body" style="display:flex; flex-direction:column; gap:12px;"></div>
     </div>
   </div>
+
 </div>
 
 <!-- 랜덤스쿱 모달창 -->
@@ -2298,6 +2309,7 @@ window.loadWdTemplate = function() {
 };
 
 window.rWd = function() {
+  rCma();
   const w = gWd(), items = w.items;
   document.getElementById("wd_total").value = fmtStr(w.total);
   document.getElementById("wd_edit_btn").textContent = wdEdit ? "✅ 편집 완료" : "✏️ 분류 편집";
@@ -2592,6 +2604,146 @@ window.importGs = function() {
   w.meetings = ensureArr(data.meetings);
   sCpD(); rGs();
   alert(`플래너에서 하객 ${w.guests.groom.length + w.guests.bride.length}명, 청모 ${w.meetings.length}개를 가져왔어요! 👥`);
+};
+
+/* ================= 🏦 결혼자금 CMA (💍 결혼 예산 탭 안) ================= */
+// 짠토·짠감이 각자 CMA에 얼마나 모았는지 적어요. 사람마다 { goal, start, rows:[{ id, date, type:"in"|"out"|"int", amount, memo }] }
+const CMA_PEOPLE = [
+  { key: "zzanto",  label: "짠토", emoji: "🍅", color: "#e8453c", bg: "#fff0f0", bar: "linear-gradient(90deg,#e8453c,#ff7043)" },
+  { key: "jjangam", label: "짠감", emoji: "🥔", color: "#a67c52", bg: "#f6eee4", bar: "linear-gradient(90deg,#a67c52,#c49a6c)" },
+];
+const CMA_TYPES = [
+  { key: "in",  label: "💰 입금", sign: 1 },
+  { key: "out", label: "💸 출금", sign: -1 },
+  { key: "int", label: "🌱 이자", sign: 1 },
+];
+let cmaSide = "zzanto";
+
+function gCma(p) {
+  const all = appData.joint.cma = appData.joint.cma || {};
+  const d = all[p] = all[p] || {};
+  d.rows = ensureArr(d.rows);
+  return d;
+}
+const cmaSign = r => (CMA_TYPES.find(t => t.key === r.type) || CMA_TYPES[0]).sign;
+// 날짜 순으로 보여주고 쌓아가요. 날짜 없는 기록은 맨 아래로 가요.
+const cmaSorted = d => d.rows.slice().sort((a, b) => (!a.date) - (!b.date) || (a.date || "").localeCompare(b.date || ""));
+const cmaBalance = d => d.rows.reduce((s, r) => s + cmaSign(r) * wdNum(r.amount), wdNum(d.start));
+const cmaPct = (bal, goal) => goal ? Math.max(0, Math.min(100, Math.round(bal / goal * 100))) : 0;
+const cmaToday = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`; };
+const cmaWon = n => (n < 0 ? "-₩" : "₩") + fmt(Math.abs(n));
+
+// 타이핑할 때는 표를 다시 그리지 않고 잔액·달성률만 고쳐요
+window.calcCma = function() {
+  const $ = id => document.getElementById(id);
+  let sumBal = 0, sumGoal = 0;
+  CMA_PEOPLE.forEach(p => {
+    const d = gCma(p.key), bal = cmaBalance(d), goal = wdNum(d.goal), pct = cmaPct(bal, goal);
+    sumBal += bal; sumGoal += goal;
+    $("cma_bal_" + p.key).textContent = cmaWon(bal);
+    $("cma_pct_" + p.key).textContent = goal ? pct + "%" : "목표를 적어주세요";
+    $("cma_bar_" + p.key).style.width = pct + "%";
+    $("cma_left_" + p.key).textContent = !goal ? "" : bal >= goal ? "🎉 목표 달성! 축하해요" : `목표까지 ${cmaWon(goal - bal)} 남았어요`;
+  });
+  const pct = cmaPct(sumBal, sumGoal);
+  $("cma_total").innerHTML = `<div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+      <div><div style="font-size:13px; font-weight:700; color:var(--text-muted);">🍅🥔 둘이 모은 CMA</div><div style="font-size:24px; font-weight:700; color:var(--main-color);">${cmaWon(sumBal)}</div></div>
+      <div style="text-align:right; font-size:13px; font-weight:700; color:var(--text-muted);">목표 합계 ${cmaWon(sumGoal)}<br><span style="font-size:20px; color:var(--text-dark);">${sumGoal ? pct + "%" : "-"}</span></div>
+    </div>
+    <div class="joint-prog-bg"><div class="joint-prog-bar" style="width:${pct}%;"></div></div>`;
+  // 기록 표의 쌓인 잔액과 월별 요약
+  const d = gCma(cmaSide);
+  let run = wdNum(d.start);
+  cmaSorted(d).forEach(r => { run += cmaSign(r) * wdNum(r.amount); const el = $("cma_run_" + r.id); if (el) el.textContent = cmaWon(run); });
+  const mtb = $("cma_month_tb"); if (mtb) mtb.innerHTML = cmaMonthRows(d);
+};
+
+function cmaMonthRows(d) {
+  const months = {};
+  cmaSorted(d).filter(r => r.date).forEach(r => {
+    const m = r.date.slice(0, 7), o = months[m] = months[m] || { in: 0, out: 0, int: 0 };
+    o[r.type in o ? r.type : "in"] += wdNum(r.amount);
+  });
+  let run = wdNum(d.start) + d.rows.filter(r => !r.date).reduce((s, r) => s + cmaSign(r) * wdNum(r.amount), 0);
+  const keys = Object.keys(months).sort();
+  if (!keys.length) return `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:14px;">날짜를 적은 기록이 생기면 달마다 정리돼요</td></tr>`;
+  return keys.map(k => {
+    const o = months[k]; run += o.in - o.out + o.int;
+    return `<tr><td style="text-align:center; font-weight:700;">${k.slice(0, 4)}년 ${+k.slice(5)}월</td><td style="text-align:right;">${cmaWon(o.in)}</td><td style="text-align:right; color:#e8453c;">${o.out ? cmaWon(-o.out) : "₩0"}</td><td style="text-align:right; color:#2e7d32;">${cmaWon(o.int)}</td><td style="text-align:right; font-weight:700;">${cmaWon(run)}</td></tr>`;
+  }).reverse().join("");
+}
+
+window.setCmaField = function(p, key, el) { gCma(p)[key] = fmtInp(el); sCpD(); calcCma(); };
+window.setCmaRow = function(id, key, el) {
+  const r = gCma(cmaSide).rows.find(x => x.id === id); if (!r) return;
+  r[key] = key === "amount" ? fmtInp(el) : el.value;
+  sCpD();
+  if (key === "date" || key === "type") rCma(); else calcCma();
+};
+window.addCmaRow = function() { gCma(cmaSide).rows.push({ id: wdId(), date: cmaToday(), type: "in", amount: "", memo: "" }); sCpD(); rCma(); };
+window.removeCmaRow = function(id) {
+  const d = gCma(cmaSide);
+  if (!confirm("이 기록을 지울까요?")) return;
+  d.rows = d.rows.filter(x => x.id !== id); sCpD(); rCma();
+};
+window.switchCmaSide = function(k) { cmaSide = k; rCma(); };
+
+window.rCma = function() {
+  document.getElementById("cma_cards").innerHTML = CMA_PEOPLE.map(p => {
+    const d = gCma(p.key);
+    return `<div class="ws" style="border-color:${p.color}55; display:flex; flex-direction:column; gap:8px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="font-size:30px;">${p.emoji}</div>
+        <div style="flex:1;"><div style="font-size:13px; font-weight:700; color:${p.color};">${p.label} CMA 잔액</div><div style="font-size:22px; font-weight:700; color:${p.color};" id="cma_bal_${p.key}"></div></div>
+        <div style="font-size:22px; font-weight:700; color:var(--text-dark);" id="cma_pct_${p.key}"></div>
+      </div>
+      <div class="joint-prog-bg" style="margin-top:0;"><div id="cma_bar_${p.key}" style="height:100%; width:0%; background:${p.bar}; transition:0.8s ease-out;"></div></div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span style="font-size:12px; font-weight:700; color:var(--text-muted);">🎯 목표 금액</span>
+        <input class="ti" style="flex:1; min-width:120px; text-align:right; font-weight:700; border-color:${p.color}55;" inputmode="numeric" placeholder="예) 10,000,000" value="${fmtStr(d.goal)}" oninput="setCmaField('${p.key}','goal',this)">
+      </div>
+      <div style="font-size:12px; font-weight:700; color:var(--text-muted);" id="cma_left_${p.key}"></div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("cma_side_bar").innerHTML = CMA_PEOPLE.map(p => `<button onclick="switchCmaSide('${p.key}')" style="flex:1; padding:9px 0; border-radius:12px; border:2px solid ${cmaSide === p.key ? p.color : "var(--sub-color)"}; background:${cmaSide === p.key ? p.color : "#fff"}; color:${cmaSide === p.key ? "#fff" : "var(--text-muted)"}; font-family:'Poor Story',cursive; font-weight:700; font-size:14px; cursor:pointer;">${p.emoji} ${p.label} CMA 기록 (${gCma(p.key).rows.length})</button>`).join("");
+
+  const p = CMA_PEOPLE.find(x => x.key === cmaSide), d = gCma(cmaSide);
+  const rows = cmaSorted(d).map(r => `<tr>
+      <td><input type="date" value="${escH(r.date)}" onchange="setCmaRow('${r.id}','date',this)"></td>
+      <td><select onchange="setCmaRow('${r.id}','type',this)">${CMA_TYPES.map(t => `<option value="${t.key}"${t.key === (r.type || "in") ? " selected" : ""}>${t.label}</option>`).join("")}</select></td>
+      <td><input value="${fmtStr(r.amount)}" inputmode="numeric" placeholder="0" style="text-align:right; font-weight:700; color:${cmaSign(r) < 0 ? "#e8453c" : r.type === "int" ? "#2e7d32" : "var(--text-dark)"};" oninput="setCmaRow('${r.id}','amount',this)"></td>
+      <td><input value="${escH(r.memo)}" placeholder="예) 월급날 자동이체" oninput="setCmaRow('${r.id}','memo',this)"></td>
+      <td id="cma_run_${r.id}" style="text-align:right; font-weight:700; white-space:nowrap; color:var(--text-muted);"></td>
+      <td style="text-align:center;"><button class="bsm" onclick="removeCmaRow('${r.id}')">✕</button></td>
+    </tr>`).join("");
+  document.getElementById("cma_body").innerHTML = `
+    <div class="ws" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span style="font-size:13px; font-weight:700; color:${p.color};">🏦 ${p.label} CMA 시작 잔액</span>
+      <input class="ti" style="flex:1; min-width:140px; text-align:right; font-weight:700;" inputmode="numeric" placeholder="기록 전에 이미 모아둔 돈" value="${fmtStr(d.start)}" oninput="setCmaField('${p.key}','start',this)">
+    </div>
+    <div class="dtw">
+      <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+        <table class="dt" style="min-width:640px;">
+          <thead><tr><th style="width:140px;">날짜</th><th style="width:100px;">구분</th><th style="width:120px;">금액</th><th>메모</th><th style="width:120px;">잔액</th><th style="width:44px;"></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      ${d.rows.length ? "" : `<div style="text-align:center; padding:18px 0; font-size:14px; color:var(--text-muted);">아직 기록이 없어요. CMA에 넣은 돈을 적어봐요 ${p.emoji}</div>`}
+      <button class="arb" style="color:${p.color};" onclick="addCmaRow()">＋ ${p.label} CMA 기록 추가</button>
+    </div>
+    <div class="dtw" style="overflow-x:auto;">
+      <div class="wt" style="padding:12px 14px 0;">📅 ${p.label} CMA 월별 정리</div>
+      <table class="dt" style="min-width:480px;">
+        <thead><tr><th>월</th><th>입금</th><th>출금</th><th>이자</th><th>월말 잔액</th></tr></thead>
+        <tbody id="cma_month_tb"></tbody>
+      </table>
+    </div>
+    <div style="font-size:12px; color:var(--text-muted); line-height:1.7; background:var(--sub-bg); border-radius:12px; padding:10px 14px;">
+      💡 <b>CMA</b>는 넣어두기만 해도 하루하루 이자가 붙는 증권사 통장이에요. 언제든 꺼내 쓸 수 있는, 이자 주는 저금통이라고 생각하면 돼요.<br>
+      🧾 잔액 = 시작 잔액 + 입금 + 이자 − 출금이에요. 목표 금액을 적으면 달성률이 위에 보여요.
+    </div>`;
+  calcCma();
 };
 
 
