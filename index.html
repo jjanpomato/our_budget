@@ -668,6 +668,7 @@ input.ti:focus{border-color:var(--main-color);}
   <div class="tab-bar" style="margin-bottom:10px;" id="jp_tabbar">
     <button class="tab-btn active" onclick="swJp(0)">🎯 공동 목표</button>
     <button class="tab-btn" onclick="swJp(1)">💳 커플 통장</button>
+    <button class="tab-btn" onclick="swJp(2)">💍 결혼 예산</button>
   </div>
 
   <!-- JP_TAB 0: 기존 공동 목표 대시보드 -->
@@ -914,6 +915,40 @@ input.ti:focus{border-color:var(--main-color);}
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- JP_TAB 2: 💍 결혼 예산 (짠토의 플래너에서 옮겨왔어요) -->
+  <div id="jp_tab2" class="tab-page">
+    <div id="capture_wd" style="display:flex; flex-direction:column; gap:16px; width:100%;">
+
+      <div class="mb">
+        <h2>💍 결혼 예산</h2>
+        <span style="font-size:13px; font-weight:700; color:var(--text-muted);">💰 총 예산</span>
+        <input class="ti" id="wd_total" style="width:160px; text-align:right; font-weight:700;" placeholder="예) 30,000,000" oninput="appData.joint.wedding.total=fmtInp(this); sCpD(); calcWd();">
+        <button class="sav" onclick="saveForSNS('capture_wd', '결혼예산')">📸 SNS 저장</button>
+      </div>
+
+      <div class="as-goal-row" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); margin-bottom:0;">
+        <div class="as-goal-box"><div class="as-goal-label">💍 지금까지 결혼비용</div><div class="as-goal-value" id="wd_cost">₩0</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;" id="wd_cost_sub">금액 칸 합계</div></div>
+        <div class="as-goal-box"><div class="as-goal-label">🥔 짠감 부담</div><div class="as-goal-value" style="color:#a67c52;" id="wd_groom">₩0</div></div>
+        <div class="as-goal-box"><div class="as-goal-label">🍅 짠토 부담</div><div class="as-goal-value" style="color:#e8453c;" id="wd_bride">₩0</div></div>
+        <div class="as-goal-box"><div class="as-goal-label">🧾 남은 잔금</div><div class="as-goal-value" id="wd_balance">₩0</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">금액 − 낸 돈</div></div>
+        <div class="as-goal-box"><div class="as-goal-label" id="wd_left_lbl">총 예산 대비 여유</div><div class="as-goal-value" id="wd_left">₩0</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;" id="wd_left_sub">위에 총 예산을 적어주세요</div></div>
+      </div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+        <button class="bsm" id="wd_edit_btn" onclick="wdEdit=!wdEdit; rWd();">✏️ 분류 편집</button>
+      </div>
+
+      <div id="wd_groups" style="display:flex; flex-direction:column; gap:12px;"></div>
+
+      <div id="wd_footer" style="background:#3d405b; color:#fff; border-radius:14px; padding:12px 16px; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:6px; font-size:14px; font-weight:700;"></div>
+
+      <div style="font-size:12px; color:var(--text-muted); line-height:1.7; background:var(--sub-bg); border-radius:12px; padding:10px 14px;">
+        💡 <b>예산</b>은 쓰기로 마음먹은 돈, <b>금액</b>은 실제로 계약하거나 쓴 돈이에요. 금액을 🥔짠감·🍅짠토 칸에 누가 얼마씩 내는지 나눠 적어요.<br>
+        🧾 <b>낸 돈</b>은 계약금처럼 이미 보낸 돈이고, <b>잔금</b> = 금액 − 낸 돈이에요.
+      </div>
     </div>
   </div>
 </div>
@@ -1166,6 +1201,7 @@ function swJp(i) {
   
   if(i===0) rZzanpomatoDashboard();
   else if(i===1) rCp();
+  else if(i===2) rWd();
 }
 
 /* ================= 데이터 세이브 함수 ================= */
@@ -2120,6 +2156,180 @@ window.rCp = function() {
     });
 
     calcCpBal();
+};
+
+/* ================= 💍 결혼 예산 탭 로직 (짠토의 플래너에서 옮겨왔어요) ================= */
+// 대분류별로 항목을 적고, 금액을 짠감(신랑)·짠토(신부)가 얼마씩 내는지 나눠 적어요.
+const WD_GROUPS = [
+  { key: "meet",    label: "상견례",    color: "#F4B6C2", items: ["신랑측 부모님 선물", "신부측 부모님 선물", "식사"] },
+  { key: "hall",    label: "웨딩홀",    color: "#FFD27F", items: ["예약금", "대관료", "꽃장식", "신랑측 식대", "신부측 식대"] },
+  { key: "sdm",     label: "스드메",    color: "#FFE7A3", items: ["스튜디오", "드레스", "메이크업", "플래닝비", "헬퍼비", "헤어변형", "촬영 소품·간식"] },
+  { key: "main",    label: "본식",      color: "#B9E3C6", items: ["신랑 예복", "혼주 메이크업", "혼주 한복", "아버님 예복", "부케·부토니에", "본식 스냅·영상", "사회자·축가 사례"] },
+  { key: "jewelry", label: "예물·예단", color: "#D9C8F0", items: ["웨딩밴드", "프로포즈 반지", "예단"] },
+  { key: "honey",   label: "신혼여행",  color: "#B7D7F2", items: ["항공권", "숙소", "환전", "여행 경비", "쇼핑"] },
+  { key: "etc",     label: "기타",      color: "#E3DAD7", items: ["종이 청첩장", "모바일 청첩장", "답례품"] },
+];
+const WD_COLS = [
+  { key: "item",   label: "항목",    w: 110 },
+  { key: "detail", label: "내용",    w: 150 },
+  { key: "plan",   label: "예산",    w: 95, num: true },
+  { key: "cost",   label: "금액",    w: 95, num: true },
+  { key: "groom",  label: "🥔 짠감", w: 95, num: true },
+  { key: "bride",  label: "🍅 짠토", w: 95, num: true },
+  { key: "paid",   label: "낸 돈",   w: 95, num: true },
+  { key: "memo",   label: "메모",    w: 130 },
+];
+const WD_ORPHAN = { key: "_none", label: "분류 없음", color: "#E3DAD7" };
+let wdEdit = false;
+
+const escH = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+const wdId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const wdNum = v => +String(v || "").replace(/[^0-9]/g, "") || 0;
+const wdNewItem = (group, item) => ({ id: wdId(), group: group, item: item || "", detail: "", plan: "", cost: "", groom: "", bride: "", paid: "", memo: "" });
+
+function gWd() {
+  const w = appData.joint.wedding = appData.joint.wedding || {};
+  w.items = ensureArr(w.items);
+  w.groups = ensureArr(w.groups);
+  if (!w.groups.length) w.groups = WD_GROUPS.map(g => ({ key: g.key, label: g.label, color: g.color }));
+  return w;
+}
+const wdItem = id => gWd().items.find(it => it.id === id);
+const wdGroupOf = (w, it) => w.groups.some(g => g.key === it.group) ? it.group : WD_ORPHAN.key;
+
+// 신랑+신부로 나눈 돈이 금액과 다르면 알려줘요 (둘 다 비어 있으면 아직 안 나눈 걸로 봐요)
+const wdGap = it => (it.groom || it.bride) ? wdNum(it.cost) - wdNum(it.groom) - wdNum(it.bride) : 0;
+const wdRest = it => Math.max(0, wdNum(it.cost) - wdNum(it.paid));
+
+// 타이핑할 때는 표를 다시 그리지 않고 합계만 고쳐요
+window.calcWd = function() {
+  const w = gWd(), items = w.items;
+  const sum = (list, k) => list.reduce((s, it) => s + wdNum(it[k]), 0);
+  const cost = sum(items, "cost"), groom = sum(items, "groom"), bride = sum(items, "bride");
+  const unassigned = items.reduce((s, it) => s + (it.groom || it.bride ? 0 : wdNum(it.cost)), 0);
+  const balance = items.reduce((s, it) => s + wdRest(it), 0);
+  // 예상 지출: 금액이 정해진 항목은 금액, 아직이면 예산으로 쳐요
+  const expected = items.reduce((s, it) => s + (wdNum(it.cost) || wdNum(it.plan)), 0);
+  const total = wdNum(w.total), left = total - expected;
+  const $ = id => document.getElementById(id);
+  $("wd_cost").textContent = "₩" + fmt(cost);
+  $("wd_cost_sub").textContent = unassigned ? "아직 안 나눈 돈 ₩" + fmt(unassigned) : "금액 칸 합계";
+  $("wd_groom").textContent = "₩" + fmt(groom);
+  $("wd_bride").textContent = "₩" + fmt(bride);
+  $("wd_balance").textContent = "₩" + fmt(balance);
+  $("wd_left_lbl").textContent = left >= 0 ? "총 예산 대비 여유" : "총 예산 초과";
+  $("wd_left").textContent = "₩" + fmt(Math.abs(left));
+  $("wd_left").style.color = left >= 0 ? "#2e7d32" : "#e8453c";
+  $("wd_left_sub").textContent = total ? "금액이 없는 항목은 예산으로 계산" : "위에 총 예산을 적어주세요";
+  $("wd_footer").style.display = items.length ? "grid" : "none";
+  $("wd_footer").innerHTML = `<span>🥔 짠감 총결혼비용 ₩${fmt(groom)}</span><span>🍅 짠토 총결혼비용 ₩${fmt(bride)}</span><span>💍 총 결혼비용 ₩${fmt(cost)}</span>`;
+  w.groups.concat([WD_ORPHAN]).forEach(g => {
+    const el = $("wd_gsum_" + g.key); if (!el) return;
+    const list = items.filter(it => wdGroupOf(w, it) === g.key);
+    el.textContent = `총 ₩${fmt(sum(list, "cost"))} · 🥔 ${fmt(sum(list, "groom"))} · 🍅 ${fmt(sum(list, "bride"))}`;
+  });
+  items.forEach(it => {
+    const r = $("wd_rest_" + it.id); if (r) { r.textContent = "₩" + fmt(wdRest(it)); r.style.color = wdRest(it) ? "#e8453c" : "var(--text-muted)"; }
+    const n = $("wd_gap_" + it.id); if (n) { const g = wdGap(it); n.textContent = g ? `⚠️ 나눈 돈이 금액보다 ${fmt(Math.abs(g))}원 ${g > 0 ? "적어요" : "많아요"}` : ""; $("wd_gaprow_" + it.id).style.display = g ? "" : "none"; }
+  });
+};
+
+window.setWdItem = function(id, key, el) {
+  const it = wdItem(id); if (!it) return;
+  const col = WD_COLS.find(c => c.key === key);
+  it[key] = col && col.num ? fmtInp(el) : el.value;
+  sCpD(); calcWd();
+};
+window.moveWdItem = function(id, group) { const it = wdItem(id); if (it) { it.group = group; sCpD(); rWd(); } };
+window.addWdItem = function(group) { gWd().items.push(wdNewItem(group)); sCpD(); rWd(); };
+window.removeWdItem = function(id) {
+  const w = gWd(), it = wdItem(id); if (!it) return;
+  if (!confirm(`${it.item || "이"} 항목을 지울까요?`)) return;
+  w.items = w.items.filter(x => x.id !== id); sCpD(); rWd();
+};
+window.renameWdGroup = function(key, v) { const g = gWd().groups.find(x => x.key === key); if (g) { g.label = v; sCpD(); } };
+window.moveWdGroup = function(i, dir) {
+  const l = gWd().groups, k = i + dir; if (k < 0 || k >= l.length) return;
+  [l[i], l[k]] = [l[k], l[i]]; sCpD(); rWd();
+};
+window.removeWdGroup = function(key) {
+  const w = gWd(), g = w.groups.find(x => x.key === key); if (!g) return;
+  const n = w.items.filter(it => it.group === key).length;
+  if (w.groups.length <= 1) { alert("분류는 하나 이상 있어야 해요."); return; }
+  if (!confirm(`'${g.label}' 분류를 지울까요?${n ? ` 안에 있는 항목 ${n}개도 같이 지워져요.` : ""}`)) return;
+  w.groups = w.groups.filter(x => x.key !== key);
+  w.items = w.items.filter(it => it.group !== key);
+  sCpD(); rWd();
+};
+window.addWdGroup = function() {
+  const w = gWd(), key = "bg_" + wdId();
+  w.groups.push({ key: key, label: "새 분류", color: PAL[w.groups.length % PAL.length] });
+  w.items.push(wdNewItem(key)); sCpD(); rWd();
+};
+window.loadWdTemplate = function() {
+  const w = gWd(), have = new Set(w.groups.map(g => g.key));
+  WD_GROUPS.forEach(g => { if (!have.has(g.key)) w.groups.push({ key: g.key, label: g.label, color: g.color }); });
+  WD_GROUPS.forEach(g => g.items.forEach(name => w.items.push(wdNewItem(g.key, name))));
+  sCpD(); rWd();
+};
+
+window.rWd = function() {
+  const w = gWd(), items = w.items;
+  document.getElementById("wd_total").value = fmtStr(w.total);
+  document.getElementById("wd_edit_btn").textContent = wdEdit ? "✅ 편집 완료" : "✏️ 분류 편집";
+  const box = document.getElementById("wd_groups");
+  if (!items.length && !wdEdit) {
+    box.innerHTML = `<div class="ws" style="text-align:center; padding:24px 16px;">
+      <div style="font-size:14px; color:var(--text-muted); margin-bottom:12px;">상견례부터 신혼여행까지 자주 쓰는 항목을 불러와서 금액만 채워봐요 💰</div>
+      <button class="sav" style="margin:0;" onclick="loadWdTemplate()">📋 기본 항목 불러오기</button>
+    </div>`;
+    calcWd(); return;
+  }
+
+  const shown = w.groups.concat(items.some(it => wdGroupOf(w, it) === WD_ORPHAN.key) ? [WD_ORPHAN] : []);
+  const inp = (it, c) => `<input value="${c.num ? fmtStr(it[c.key]) : escH(it[c.key])}" ${c.num ? 'inputmode="numeric" placeholder="0" style="text-align:right;"' : ""} oninput="setWdItem('${it.id}','${c.key}',this)">`;
+  const groupSel = it => `<select onchange="moveWdItem('${it.id}',this.value)" title="다른 분류로 옮기기" style="width:auto; font-size:11px;">` +
+    w.groups.map(g => `<option value="${g.key}"${g.key === wdGroupOf(w, it) ? " selected" : ""}>${escH(g.label)}</option>`).join("") +
+    (wdGroupOf(w, it) === WD_ORPHAN.key ? `<option value="${WD_ORPHAN.key}" selected>${WD_ORPHAN.label}</option>` : "") + `</select>`;
+
+  box.innerHTML = shown.map((g, gi) => {
+    const list = items.filter(it => wdGroupOf(w, it) === g.key);
+    if (!wdEdit && !list.length) return "";
+    const real = g.key !== WD_ORPHAN.key;
+    const head = wdEdit && real
+      ? `<input class="ti" value="${escH(g.label)}" style="flex:1; min-width:120px; font-weight:700;" oninput="renameWdGroup('${g.key}',this.value)">
+         <button class="sortb" onclick="moveWdGroup(${gi},-1)"${gi === 0 ? " disabled" : ""}>↑</button>
+         <button class="sortb" onclick="moveWdGroup(${gi},1)"${gi === w.groups.length - 1 ? " disabled" : ""}>↓</button>
+         <button class="bsm" style="background:#fff; color:#e8453c; border-color:#e8453c;" onclick="removeWdGroup('${g.key}')">🗑️</button>`
+      : `<span style="font-size:15px; font-weight:700; flex:1;">${escH(g.label)}</span>`;
+    const rows = list.map(it => `<tr>
+        ${WD_COLS.slice(0, 7).map(c => `<td>${inp(it, c)}</td>`).join("")}
+        <td id="wd_rest_${it.id}" style="text-align:right; font-weight:700; white-space:nowrap;"></td>
+        <td>${inp(it, WD_COLS[7])}</td>
+        <td style="text-align:center; white-space:nowrap;">${wdEdit ? groupSel(it) : ""}<button class="bsm" onclick="removeWdItem('${it.id}')">✕</button></td>
+      </tr>
+      <tr id="wd_gaprow_${it.id}" style="display:none;"><td colspan="10" id="wd_gap_${it.id}" style="font-size:11px; color:#c98a00; font-weight:700;"></td></tr>`).join("");
+    return `<div class="dtw">
+      <div style="display:flex; align-items:center; gap:8px; padding:10px 14px; background:${g.color}66; flex-wrap:wrap;">
+        ${head}
+        <span id="wd_gsum_${g.key}" style="font-size:12px; font-weight:700;"></span>
+      </div>
+      <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+        <table class="dt" style="min-width:980px;">
+          <thead><tr>${WD_COLS.slice(0, 7).map(c => `<th style="min-width:${c.w}px;">${c.label}</th>`).join("")}<th style="min-width:85px;">잔금</th><th style="min-width:${WD_COLS[7].w}px;">메모</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      ${real ? `<button class="arb" onclick="addWdItem('${g.key}')">＋ ${escH(g.label)} 항목 추가</button>` : ""}
+    </div>`;
+  }).join("") + (wdEdit ? `
+    <button class="arb" style="border:1.5px dashed var(--sub-color); border-radius:12px;" onclick="addWdGroup()">＋ 새 분류 추가</button>
+    <div style="font-size:12px; color:var(--text-muted); line-height:1.7; background:var(--sub-bg); border-radius:12px; padding:10px 14px;">
+      ✏️ 분류 이름을 고치고 ↑↓로 순서를 바꿀 수 있어요. 🗑️를 누르면 그 분류와 안의 항목이 같이 지워져요.<br>
+      🔀 항목 옆 목록으로 다른 분류로 옮겨요.
+      ${items.length ? `<br>📋 <span onclick="loadWdTemplate()" style="text-decoration:underline; cursor:pointer; font-weight:700;">기본 항목 한 번 더 불러오기</span> (지금 항목 뒤에 덧붙여져요)` : ""}
+    </div>` : "");
+  calcWd();
 };
 
 
