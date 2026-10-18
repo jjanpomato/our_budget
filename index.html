@@ -669,6 +669,7 @@ input.ti:focus{border-color:var(--main-color);}
     <button class="tab-btn active" onclick="swJp(0)">🎯 공동 목표</button>
     <button class="tab-btn" onclick="swJp(1)">💳 커플 통장</button>
     <button class="tab-btn" onclick="swJp(2)">💍 결혼 예산</button>
+    <button class="tab-btn" onclick="swJp(3)">👥 하객</button>
   </div>
 
   <!-- JP_TAB 0: 기존 공동 목표 대시보드 -->
@@ -951,6 +952,28 @@ input.ti:focus{border-color:var(--main-color);}
       </div>
     </div>
   </div>
+
+  <!-- JP_TAB 3: 👥 하객 (짠토의 플래너에서 옮겨왔어요) -->
+  <div id="jp_tab3" class="tab-page">
+    <div style="display:flex; flex-direction:column; gap:16px; width:100%;">
+
+      <div class="mb">
+        <h2>👥 하객 관리</h2>
+        <button class="bsm" style="margin-left:auto;" onclick="importGs()">📥 플래너에서 가져오기</button>
+      </div>
+
+      <!-- 요약표: 이름을 적은 하객만 세요 -->
+      <div class="dtw" style="overflow-x:auto;">
+        <table class="dt" style="min-width:560px;">
+          <thead><tr><th>구분</th><th>총 초대</th><th>참석 (O)</th><th>미정/불참</th><th>참석률</th><th>청모 인원</th><th>축의금 합계</th></tr></thead>
+          <tbody id="gs_sum_tb" style="text-align:center;"></tbody>
+        </table>
+      </div>
+
+      <div id="gs_side_bar" style="display:flex; gap:8px;"></div>
+      <div id="gs_body" style="display:flex; flex-direction:column; gap:12px;"></div>
+    </div>
+  </div>
 </div>
 
 <!-- 랜덤스쿱 모달창 -->
@@ -1202,6 +1225,7 @@ function swJp(i) {
   if(i===0) rZzanpomatoDashboard();
   else if(i===1) rCp();
   else if(i===2) rWd();
+  else if(i===3) rGs();
 }
 
 /* ================= 데이터 세이브 함수 ================= */
@@ -2330,6 +2354,244 @@ window.rWd = function() {
       ${items.length ? `<br>📋 <span onclick="loadWdTemplate()" style="text-decoration:underline; cursor:pointer; font-weight:700;">기본 항목 한 번 더 불러오기</span> (지금 항목 뒤에 덧붙여져요)` : ""}
     </div>` : "");
   calcWd();
+};
+
+/* ================= 👥 하객 탭 로직 (짠토의 플래너에서 옮겨왔어요) ================= */
+// 하객 한 명 = { id, name, type:"모청"|"종이"|"", meetingId(청모), attend:"O"|"X"|"", meal:"O"|"X"|"", gift, memo }
+// 청모(청첩장 모임) 하나 = { id, date, place, total, memo }, 하객은 meetingId로 어느 청모에 왔는지 가리켜요.
+// 플래너와 같은 모양(groom=짠감측, bride=짠토측)으로 joint.wedding에 저장해요.
+const GS_SIDES = [
+  { key: "bride", label: "짠토측", emoji: "🍅", color: "#e8453c", bg: "#fff0f0" },
+  { key: "groom", label: "짠감측", emoji: "🥔", color: "#a67c52", bg: "#f6eee4" },
+];
+const GS_MEET = { key: "meet", label: "청모", emoji: "🍽️", color: "#E39B3A", bg: "#FFF4E3" };
+const GS_COLS = [
+  { key: "name",      label: "이름",    w: 100 },
+  { key: "type",      label: "유형",    w: 60,  cycle: ["", "모청", "종이"] },
+  { key: "meetingId", label: "🍽️ 청모", w: 160, meeting: true },
+  { key: "attend",    label: "참석",    w: 50,  cycle: ["", "O", "X"] },
+  { key: "meal",      label: "식사",    w: 50,  cycle: ["", "O", "X"] },
+  { key: "gift",      label: "축의금",  w: 95,  num: true },
+  { key: "memo",      label: "메모",    w: 140 },
+];
+const GS_DAYS = ["일", "월", "화", "수", "목", "금", "토"];
+let gsSide = "bride", gsSort = { key: null, dir: 1 };
+
+function gGs() {
+  const w = appData.joint.wedding = appData.joint.wedding || {};
+  const g = w.guests = w.guests || {};
+  g.groom = ensureArr(g.groom); g.bride = ensureArr(g.bride);
+  w.meetings = ensureArr(w.meetings);
+  return w;
+}
+const gsGuest = (side, id) => gGs().guests[side].find(x => x.id === id);
+const gsNamed = list => list.filter(x => (x.name || "").trim());
+const gsNewMeeting = () => ({ id: wdId(), date: "", place: "", total: "", memo: "" });
+const gsByDate = (a, b) => (!a.date) - (!b.date) || (a.date || "").localeCompare(b.date || "");
+function gsMeetingLabel(m) {
+  if (!m) return "";
+  const d = m.date ? `${+m.date.slice(5, 7)}/${+m.date.slice(8)}(${GS_DAYS[new Date(+m.date.slice(0, 4), +m.date.slice(5, 7) - 1, +m.date.slice(8)).getDay()]})` : "날짜 미정";
+  return d + (m.place ? " " + m.place : "");
+}
+function gsStats(list) {
+  const rows = gsNamed(list), total = rows.length, yes = rows.filter(x => x.attend === "O").length;
+  return { total, yes, rest: total - yes, pct: total ? Math.round(yes / total * 100) : 0,
+    meet: rows.filter(x => x.meetingId).length, gift: rows.reduce((s, x) => s + wdNum(x.gift), 0) };
+}
+
+// 타이핑할 때는 표를 다시 그리지 않고 요약만 고쳐요
+window.calcGs = function() {
+  const w = gGs(), all = w.guests;
+  const row = (label, s, bg, bold) => `<tr style="background:${bg};${bold ? " font-weight:700;" : ""}"><td style="font-weight:700;">${label}</td><td>${s.total}</td><td>${s.yes}</td><td>${s.rest}</td><td>${s.pct}%</td><td>${s.meet}</td><td>₩${fmt(s.gift)}</td></tr>`;
+  document.getElementById("gs_sum_tb").innerHTML =
+    GS_SIDES.map(s => row(`${s.emoji} ${s.label}`, gsStats(all[s.key]), s.bg)).join("") +
+    row("합 계", gsStats(all.groom.concat(all.bride)), "var(--sub-bg)", true);
+};
+
+window.setGsField = function(side, id, key, el) {
+  const g = gsGuest(side, id); if (!g) return;
+  g[key] = key === "gift" ? fmtInp(el) : el.value;
+  sCpD(); calcGs();
+};
+window.cycleGs = function(side, id, key) {
+  const g = gsGuest(side, id), col = GS_COLS.find(c => c.key === key); if (!g || !col) return;
+  g[key] = col.cycle[(col.cycle.indexOf(g[key] || "") + 1) % col.cycle.length];
+  sCpD(); rGs();
+};
+// 청모 칸에서 '새 청모 만들기'를 고르면 빈 청모를 만들고 그 하객을 바로 넣어요. 날짜·식당은 🍽️ 청모에서 채워요.
+window.pickGsMeeting = function(side, id, v) {
+  const w = gGs(), g = gsGuest(side, id); if (!g) return;
+  if (v === "__new") { const m = gsNewMeeting(); w.meetings.push(m); v = m.id; }
+  g.meetingId = v; sCpD(); rGs();
+};
+window.addGs = function(side) {
+  gGs().guests[side].push({ id: wdId(), name: "", type: "", meetingId: "", attend: "", meal: "", gift: "", memo: "" });
+  sCpD(); rGs();
+};
+window.removeGs = function(side, id) {
+  const w = gGs(), g = gsGuest(side, id); if (!g) return;
+  if (!confirm(`${(g.name || "").trim() || "이름 없는 하객"} 줄을 지울까요?`)) return;
+  w.guests[side] = w.guests[side].filter(x => x.id !== id); sCpD(); rGs();
+};
+// 정렬은 저장된 순서 자체를 바꿔요. 그래서 고치는 도중에 줄이 갑자기 움직이지 않아요. 빈칸은 항상 맨 아래로 가요.
+window.sortGs = function(key) {
+  const w = gGs(), col = GS_COLS.find(c => c.key === key);
+  gsSort = { key: key, dir: gsSort.key === key ? -gsSort.dir : 1 };
+  const meetOf = x => w.meetings.find(m => m.id === x.meetingId);
+  const val = x => col.num ? wdNum(x[key]) : col.meeting ? `${(meetOf(x) || {}).date || "9999"}|${(meetOf(x) || {}).place || ""}` : (x[key] || "");
+  const empty = x => col.meeting ? !meetOf(x) : !String(x[key] || "").trim();
+  w.guests[gsSide].sort((a, b) => {
+    if (empty(a) || empty(b)) return empty(a) - empty(b);
+    const p = val(a), q = val(b);
+    return (typeof p === "number" ? p - q : String(p).localeCompare(String(q), "ko")) * gsSort.dir;
+  });
+  sCpD(); rGs();
+};
+window.switchGsSide = function(k) { gsSide = k; gsSort = { key: null, dir: 1 }; rGs(); };
+
+// 🍽️ 청모
+window.setGsMeet = function(id, key, el) {
+  const m = gGs().meetings.find(x => x.id === id); if (!m) return;
+  m[key] = key === "total" ? fmtInp(el) : el.value;
+  sCpD();
+  if (key === "date") rGs(); else if (key === "total") calcGsMeet();
+};
+window.addGsMeet = function() { gGs().meetings.push(gsNewMeeting()); sCpD(); rGs(); };
+window.assignGsMeet = function(v, meetingId) {
+  const [side, id] = String(v).split(":"), g = id && gsGuest(side, id); if (!g) return;
+  g.meetingId = meetingId; sCpD(); rGs();
+};
+window.removeGsMeet = function(id) {
+  const w = gGs(), m = w.meetings.find(x => x.id === id); if (!m) return;
+  const n = w.guests.groom.concat(w.guests.bride).filter(x => x.meetingId === id).length;
+  if (!confirm(`${gsMeetingLabel(m)} 청모를 지울까요?${n ? ` 들어 있던 하객 ${n}명은 '청모 없음'으로 바뀌어요.` : ""}`)) return;
+  w.meetings = w.meetings.filter(x => x.id !== id);
+  [w.guests.groom, w.guests.bride].forEach(l => l.forEach(x => { if (x.meetingId === id) x.meetingId = ""; }));
+  sCpD(); rGs();
+};
+function gsPeople(w) { return GS_SIDES.flatMap(s => gsNamed(w.guests[s.key]).map(x => ({ g: x, side: s }))); }
+window.calcGsMeet = function() {
+  const w = gGs(), people = gsPeople(w), ids = new Set(w.meetings.map(m => m.id));
+  const met = people.filter(p => ids.has(p.g.meetingId)).length, free = people.length - met;
+  const totalCost = w.meetings.reduce((s, m) => s + wdNum(m.total), 0);
+  const $ = id => document.getElementById(id);
+  if (!$("gs_meet_cnt")) return;
+  $("gs_meet_cnt").textContent = w.meetings.length + "번";
+  $("gs_meet_met").textContent = met + "명";
+  $("gs_meet_met_sub").textContent = free ? `아직 안 만난 하객 ${free}명` : "";
+  $("gs_meet_cost").textContent = "₩" + fmt(totalCost);
+  $("gs_meet_cost_sub").textContent = met ? `1인당 평균 ₩${fmt(Math.round(totalCost / met))}` : "";
+  w.meetings.forEach(m => {
+    const el = $("gs_mper_" + m.id); if (!el) return;
+    const n = people.filter(p => p.g.meetingId === m.id).length;
+    el.textContent = n + "명" + (n ? ` · 1인당 ₩${fmt(Math.round(wdNum(m.total) / n))}` : "");
+  });
+};
+
+function rGsMeetings(w) {
+  const people = gsPeople(w), ids = new Set(w.meetings.map(m => m.id));
+  const free = people.filter(p => !ids.has(p.g.meetingId));
+  const card = (id, label) => `<div class="as-goal-box" style="padding:10px 12px; min-width:0;"><div class="as-goal-label">${label}</div><div class="as-goal-value" style="font-size:16px; word-break:keep-all;" id="${id}"></div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;" id="${id}_sub"></div></div>`;
+  const cards = w.meetings.slice().sort(gsByDate).map(m => {
+    const list = people.filter(p => p.g.meetingId === m.id);
+    const chips = list.map(p => `<span class="chip" style="background:${p.side.bg}; border-color:${p.side.color}55;">${p.side.emoji} ${escH(p.g.name)}<span class="xd" title="이 청모에서 빼기" onclick="assignGsMeet('${p.side.key}:${p.g.id}','')">✕</span></span>`).join("")
+      || `<span style="font-size:12px; color:var(--text-muted);">아직 아무도 없어요. 아래에서 하객을 넣어봐요</span>`;
+    const opts = GS_SIDES.map(s => {
+      const o = free.filter(p => p.side.key === s.key);
+      return o.length ? `<optgroup label="${s.emoji} ${s.label}">${o.map(p => `<option value="${s.key}:${p.g.id}">${escH(p.g.name)}</option>`).join("")}</optgroup>` : "";
+    }).join("");
+    return `<div class="wcard" style="border-top:5px solid ${GS_MEET.color}; display:flex; flex-direction:column; gap:8px;">
+      <div style="display:flex; gap:6px; align-items:center;">
+        <input type="date" class="wdate-inp" style="width:140px;" value="${escH(m.date)}" onchange="setGsMeet('${m.id}','date',this)">
+        <input class="ti" style="flex:1; font-weight:700;" placeholder="🍽️ 식당" value="${escH(m.place)}" oninput="setGsMeet('${m.id}','place',this)">
+        <button class="bsm" style="background:#fff; color:#e8453c; border-color:#e8453c;" title="청모 지우기" onclick="removeGsMeet('${m.id}')">🗑️</button>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <span style="font-size:12px; color:var(--text-muted); font-weight:700;">💰 총 식비</span>
+        <input class="ti" style="width:120px; text-align:right;" inputmode="numeric" placeholder="0" value="${fmtStr(m.total)}" oninput="setGsMeet('${m.id}','total',this)">
+        <span id="gs_mper_${m.id}" style="font-size:13px; font-weight:700; color:${GS_MEET.color};"></span>
+      </div>
+      <div class="cw" style="margin:0;">${chips}</div>
+      <select class="sc" style="font-size:13px; color:var(--text-muted);" onchange="assignGsMeet(this.value,'${m.id}')">
+        <option value="">＋ 하객 넣기 ${free.length ? `(${free.length}명 남음)` : "(남은 하객 없음)"}</option>${opts}
+      </select>
+      <input class="ti" placeholder="메모 (예: 2차 카페, 선물 받음)" value="${escH(m.memo)}" oninput="setGsMeet('${m.id}','memo',this)">
+    </div>`;
+  }).join("");
+  return `<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">${card("gs_meet_cnt", "🍽️ 청모 횟수")}${card("gs_meet_met", "👥 만난 하객")}${card("gs_meet_cost", "💰 청모 총 식비")}</div>
+    <div class="card-grid" style="margin-top:0;">${cards}</div>
+    ${w.meetings.length ? "" : `<div style="text-align:center; padding:20px 0; font-size:14px; color:var(--text-muted);">아직 청모가 없어요. 아래 버튼으로 첫 청모를 만들어봐요 🍽️</div>`}
+    <button class="arb" style="border:1.5px dashed ${GS_MEET.color}; border-radius:12px; color:${GS_MEET.color};" onclick="addGsMeet()">＋ 새 청모 추가</button>
+    <div style="font-size:12px; color:var(--text-muted); line-height:1.7; background:var(--sub-bg); border-radius:12px; padding:10px 14px;">
+      💡 청모마다 날짜·식당·총 식비를 한 번만 적으면 인원과 1인당 비용이 자동으로 계산돼요.<br>
+      👥 하객 표의 🍽️ 청모 칸에서 골라도 되고, 여기서 '하객 넣기'로 넣어도 돼요. 이름을 적은 하객만 고를 수 있어요.
+    </div>`;
+}
+
+function rGsTable(w) {
+  const side = GS_SIDES.find(s => s.key === gsSide), list = w.guests[gsSide];
+  const meets = w.meetings.slice().sort(gsByDate);
+  const cell = (x, c) => {
+    if (c.cycle) {
+      const v = x[c.key] || "";
+      const st = v === "O" ? "background:#E3F4EA; color:#2E8B57; border:1.5px solid #9ED4B4;"
+        : v === "X" ? "background:#FDECEC; color:#D64545; border:1.5px solid #F2B0B0;"
+        : v ? "background:var(--sub-bg); color:var(--main-color); border:1.5px solid var(--sub-color);"
+        : "background:#fff; color:#ccc; border:1.5px dashed var(--sub-color);";
+      return `<button onclick="cycleGs('${gsSide}','${x.id}','${c.key}')" style="${st} min-width:40px; padding:4px 8px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; font-family:'Poor Story',cursive;">${v || "—"}</button>`;
+    }
+    if (c.meeting) {
+      const has = meets.some(m => m.id === x.meetingId);
+      return `<select onchange="pickGsMeeting('${gsSide}','${x.id}',this.value)" style="${has ? "" : "color:var(--text-muted);"}">
+        <option value="">— 청모 없음</option>${meets.map(m => `<option value="${m.id}"${m.id === x.meetingId ? " selected" : ""}>${escH(gsMeetingLabel(m))}</option>`).join("")}<option value="__new">＋ 새 청모 만들기</option></select>`;
+    }
+    return `<input value="${c.num ? fmtStr(x[c.key]) : escH(x[c.key])}" ${c.num ? 'inputmode="numeric" placeholder="0" style="text-align:right;"' : ""} oninput="setGsField('${gsSide}','${x.id}','${c.key}',this)">`;
+  };
+  const mark = k => gsSort.key === k ? (gsSort.dir === 1 ? " ▲" : " ▼") : ` <span style="opacity:.5;">⇅</span>`;
+  return `<div class="dtw">
+      <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+        <table class="dt" style="min-width:820px;">
+          <thead><tr><th style="width:40px; color:#fff; background:${side.color};">번호</th>${GS_COLS.map(c => `<th onclick="sortGs('${c.key}')" title="눌러서 정렬" style="min-width:${c.w}px; cursor:pointer; color:#fff; background:${side.color};">${c.label}${mark(c.key)}</th>`).join("")}<th style="background:${side.color};"></th></tr></thead>
+          <tbody>${list.map((x, i) => `<tr>
+            <td style="text-align:center; font-size:11px; color:var(--text-muted);">${i + 1}</td>
+            ${GS_COLS.map(c => `<td${c.cycle ? ' style="text-align:center;"' : ""}>${cell(x, c)}</td>`).join("")}
+            <td style="text-align:center;"><button class="bsm" onclick="removeGs('${gsSide}','${x.id}')">✕</button></td>
+          </tr>`).join("")}</tbody>
+        </table>
+      </div>
+      ${list.length ? "" : `<div style="text-align:center; padding:20px 0; font-size:14px; color:var(--text-muted);">아직 ${side.label} 하객이 없어요. 아래 버튼으로 한 줄씩 추가해봐요 ${side.emoji}</div>`}
+      <button class="arb" style="color:${side.color};" onclick="addGs('${gsSide}')">＋ ${side.label} 하객 추가</button>
+    </div>
+    <div style="font-size:12px; color:var(--text-muted); line-height:1.7; background:var(--sub-bg); border-radius:12px; padding:10px 14px;">
+      💡 유형·참석·식사 칸은 누를 때마다 바뀌어요 (빈칸 → 모청/O → 종이/X → 빈칸).<br>
+      📊 요약표는 이름을 적은 하객만 세요. 청모 인원은 🍽️ 청모를 고른 하객 수예요.<br>
+      🍽️ 청모 칸에서 모임을 고르면 돼요. 날짜·식당·식비는 위 🍽️ 청모 버튼에서 모임별로 한 번만 적어요.<br>
+      ↕️ 표 제목을 누르면 그 칸 기준으로 정렬돼요.
+    </div>`;
+}
+
+window.rGs = function() {
+  const w = gGs();
+  const btn = (k, s, n) => `<button onclick="switchGsSide('${k}')" style="flex:1; padding:9px 0; border-radius:12px; border:2px solid ${gsSide === k ? s.color : "var(--sub-color)"}; background:${gsSide === k ? s.color : "#fff"}; color:${gsSide === k ? "#fff" : "var(--text-muted)"}; font-family:'Poor Story',cursive; font-weight:700; font-size:14px; cursor:pointer;">${s.emoji} ${s.label} (${n})</button>`;
+  document.getElementById("gs_side_bar").innerHTML = GS_SIDES.map(s => btn(s.key, s, w.guests[s.key].length)).join("") + btn(GS_MEET.key, GS_MEET, w.meetings.length);
+  document.getElementById("gs_body").innerHTML = gsSide === GS_MEET.key ? rGsMeetings(w) : rGsTable(w);
+  calcGs(); calcGsMeet();
+};
+
+// 짠토의 플래너 › 결혼준비 › 하객에서 '📤 짠포마토로 보내기'로 복사한 내용을 붙여넣어요
+window.importGs = function() {
+  const txt = prompt("짠토의 플래너 › 💍 결혼준비 › 👥 하객에서\n'📤 짠포마토로 보내기'를 누르고 복사된 내용을 여기에 붙여넣어주세요.");
+  if (!txt) return;
+  let data;
+  try { data = JSON.parse(txt); } catch (e) { alert("내용을 읽지 못했어요. 복사한 내용을 그대로 붙여넣어주세요."); return; }
+  if (!data || data.type !== "jjanto-wedding-guests") { alert("플래너의 하객 내용이 아니에요."); return; }
+  const w = gGs(), have = w.guests.groom.length + w.guests.bride.length + w.meetings.length;
+  if (have && !confirm("지금 적어둔 하객과 청모를 지우고 플래너 내용으로 바꿀까요?")) return;
+  const g = data.guests || {};
+  w.guests = { groom: ensureArr(g.groom), bride: ensureArr(g.bride) };
+  w.meetings = ensureArr(data.meetings);
+  sCpD(); rGs();
+  alert(`플래너에서 하객 ${w.guests.groom.length + w.guests.bride.length}명, 청모 ${w.meetings.length}개를 가져왔어요! 👥`);
 };
 
 
