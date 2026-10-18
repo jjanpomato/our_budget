@@ -248,7 +248,7 @@ input.ti:focus{border-color:var(--main-color);}
     <button class="tab-btn active" onclick="sw(0)">🏠 가계부</button>
     <button class="tab-btn" onclick="sw(1)">💚 부수입</button>
     <button class="tab-btn" onclick="sw(2)">💸 지출</button>
-    <button class="tab-btn" id="tab_btn_scoop" onclick="sw(3)">🥄 랜덤스쿱</button>
+    <button class="tab-btn" id="tab_btn_scoop" onclick="sw(3)">🎟️ 뽑기저축</button>
     <button class="tab-btn" onclick="sw(4)">📈 저축/투자</button>
     <button class="tab-btn" onclick="sw(5)">💼 자산 및 부채</button>
     <button class="tab-btn" onclick="sw(6)">📅 리포트</button>
@@ -443,14 +443,14 @@ input.ti:focus{border-color:var(--main-color);}
   <div class="tab-page" id="tp3">
   <div class="ft">
     <div class="mb">
-      <h2>🥄 랜덤스쿱 저축</h2>
+      <h2>🎟️ 뽑기 저축</h2>
       <select class="sc" id="scy" onchange="onSP()"></select>
       <select class="sc" id="scm" onchange="onSP()"></select>
       <span class="pill" id="scpill">월 총 ₩0</span>
       <button class="sav" onclick="oSM()">📸 카드 저장</button>
     </div>
     <div class="panel">
-      <div class="pt">📋 랜덤스쿱 규칙</div>
+      <div class="pt">📋 뽑기 규칙</div>
       <div style="overflow-x:auto;"><table class="te" id="rtbl" style="min-width:200px;"></table></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <button class="bsm" onclick="aRR()">＋ 행</button>
@@ -922,7 +922,7 @@ input.ti:focus{border-color:var(--main-color);}
 <!-- 랜덤스쿱 모달창 -->
 <div class="mo" id="scmo">
   <div class="mb2">
-    <div class="mt2">📸 랜덤스쿱 카드 저장</div>
+    <div class="mt2">📸 뽑기 카드 저장</div>
     <div class="mrb">
       <button class="active" id="smr1" onclick="sSR(this,'1/1')">1:1</button>
       <button id="smr2" onclick="sSR(this,'4/5')">4:5</button>
@@ -1522,15 +1522,54 @@ window.aEF=()=>{gED(eY,eM).fixed.push({cat:eCats[0]?eCats[0].name:"",desc:"",amo
 window.aED=()=>{gED(eY,eM).dated.push({date:"",cat:eCats[0]?eCats[0].name:"",desc:"",amount:"",over:"",exclude:false});sE();rExp();};
 
 /* ================= 3: 랜덤스쿱 ================= */
-const SC_RULES_DEF=()=>[["🍅 달성률 10%당 1스쿱🥄"],["🍅 네잎클로버 파츠는 한 번 더!🍀"],["🍅 100% 달성시 한 번 더! ✨"],["🍅 큰 파츠 개당 1,000원💎"],["🍅 주간 총 금액 다음 주에 매수! 💸"]];
+const SC_RULES_OLD=["🍅 달성률 10%당 1스쿱🥄","🍅 네잎클로버 파츠는 한 번 더!🍀","🍅 100% 달성시 한 번 더! ✨","🍅 큰 파츠 개당 1,000원💎","🍅 주간 총 금액 다음 주에 매수! 💸"];
+const SC_RULES_DEF=()=>[["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️"],["🍅 10만원 / 5만원 / 1만원 / 5천원 💵"],["🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자"],["🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자"],["🍅 🐟 붕어빵 나오면 한 장 더!"],["🍅 주간 총 금액 다음 주에 매수! 💸"]];
 function gScRules(y,m){
   if(!scD[y])scD[y]={}; if(!scD[y][m])scD[y][m]={};
   let r = ensureArr(scD[y][m].rules); if(r.length===0) r=SC_RULES_DEF();
+  // 예전 랜덤스쿱 기본 규칙 그대로면 뽑기 규칙으로 교체
+  const rv=r.map(x=>Array.isArray(x)?x[0]:x);
+  if(rv.length===SC_RULES_OLD.length && rv.every((v,i)=>v===SC_RULES_OLD[i])) r=SC_RULES_DEF();
   scD[y][m].rules = r.filter(x=>{const v=Array.isArray(x)?x[0]:x;return v!=='규칙'&&v!=='규칙:내용';}); sSc(); return scD[y][m].rules;
 }
-const SC_WK_DEF=(wk)=>({ 
+// 뽑기 표 행: count=장수×단가, mul=곱하기, div=나누기, note=기록만, total=그날 합계
+const SC_EMPTY=()=>["","","","","","",""];
+const SC_ROWS_DEF=()=>[
+  {label:"10만원 💵",type:"count",unit:100000,vals:SC_EMPTY()},
+  {label:"5만원 💵",type:"count",unit:50000,vals:SC_EMPTY()},
+  {label:"1만원 💵",type:"count",unit:10000,vals:SC_EMPTY()},
+  {label:"5천원 💵",type:"count",unit:5000,vals:SC_EMPTY()},
+  {label:"곱하기 ✖️",type:"mul",vals:SC_EMPTY()},
+  {label:"나누기 ➗",type:"div",vals:SC_EMPTY()},
+  {label:"붕어빵 🐟",type:"note",vals:SC_EMPTY()},
+  {label:"총 금액 💰",type:"total",vals:SC_EMPTY()}
+];
+// 예전 랜덤스쿱 표: 입력값이 없으면 뽑기 표로 바꾸고, 기록이 있으면 그대로 보존
+function migrateScRows(rows){
+  if(rows.length===0 || rows[0].type) return rows.length===0?SC_ROWS_DEF():rows;
+  const hasData=rows.slice(0,5).some(r=>ensureArr(r.vals).some(v=>String(v||"").trim()!==""));
+  if(!hasData) return SC_ROWS_DEF();
+  const legacy=["memo","memo","memo","amt","count","total"];
+  rows.forEach((r,i)=>{ r.type=legacy[i]||"memo"; if(r.type==="count") r.unit=1000; r.vals=ensureArr(r.vals); });
+  return rows;
+}
+const scNum=v=>parseInt(String(v||"").replace(/[^0-9]/g,''))||0;
+const scNums=v=>(String(v||"").match(/\d+/g)||[]).map(Number).filter(n=>n>0);
+// 그날 총 금액 = (장수×단가 합) × 곱하기 숫자 ÷ 나누기 숫자 (원 단위 버림)
+function calcScDay(wd,vi){
+  let base=0,mul=1,div=1;
+  wd.rows.forEach(r=>{
+    const v=r.vals[vi];
+    if(r.type==="count") base+=scNum(v)*(r.unit||0);
+    else if(r.type==="amt") base+=scNum(v);
+    else if(r.type==="mul") scNums(v).forEach(n=>mul*=n);
+    else if(r.type==="div") scNums(v).forEach(n=>div*=n);
+  });
+  return Math.floor(base*mul/div);
+}
+const SC_WK_DEF=(wk)=>({
     dateRange: wk===1?"8/1~8/7":wk===2?"8/8~8/14":wk===3?"8/15~8/21":"8/22~8/28", 
-    rows:[{label:"달성률 ✨",vals:["","","","","","",""]},{label:"스쿱 🥄",vals:["","","","","","",""]},{label:"보너스 🍀",vals:["","","","","","",""]},{label:"보너스 🍅",vals:["","","","","","",""]},{label:"큰파츠 💎",vals:["","","","","","",""]},{label:"총 금액 💰",vals:["","","","","","",""]}], 
+    rows:SC_ROWS_DEF(),
     weekTotal:"",
     bonus50: false,
     bonus100: false,
@@ -1539,8 +1578,7 @@ const SC_WK_DEF=(wk)=>({
 });
 function gScWk(y,m,wk){
   if(!scD[y])scD[y]={}; if(!scD[y][m])scD[y][m]={}; if(!scD[y][m]["w"+wk])scD[y][m]["w"+wk]=SC_WK_DEF(wk);
-  scD[y][m]["w"+wk].rows=ensureArr(scD[y][m]["w"+wk].rows);
-  if(scD[y][m]["w"+wk].rows.length===0) scD[y][m]["w"+wk].rows=SC_WK_DEF(wk).rows;
+  scD[y][m]["w"+wk].rows=migrateScRows(ensureArr(scD[y][m]["w"+wk].rows));
   return scD[y][m]["w"+wk];
 }
 function onSP(){scY=parseInt(document.getElementById("scy").value)||CUR_Y;scM=parseInt(document.getElementById("scm").value)||CUR_M;bRT();bSWUI();}
@@ -1575,10 +1613,12 @@ function bSWUI(){
       let cells=`<td style="font-weight:700;color:var(--text-muted);font-size:12px;text-align:center;">${row.label}</td>`;
       row.vals.forEach((v,vi)=>{
         if (vi < 5) { // 월~금
-            if (ri === 5) {
+            if (row.type === "total") {
                 cells+=`<td><input class="lt-inp" id="sc_day_tot_${wk}_${vi}" value="${fmtStr(v)}" readonly style="text-align:center;font-size:13px;padding:4px 0;background:var(--sub-bg);color:var(--text-muted);cursor:not-allowed;"></td>`;
             } else {
-                cells+=`<td><input class="lt-inp" value="${v||""}" oninput="updateScVal(${wk},${ri},${vi},this.value)" style="text-align:center;font-size:13px;padding:4px 0;"></td>`;
+                const ph = row.type==="mul"?"×":row.type==="div"?"÷":(row.type==="count"||row.type==="note")?"0":"";
+                const im = row.type==="memo"?"":` inputmode="numeric"`;
+                cells+=`<td><input class="lt-inp" value="${v||""}" placeholder="${ph}"${im} oninput="updateScVal(${wk},${ri},${vi},this.value)" style="text-align:center;font-size:13px;padding:4px 0;"></td>`;
             }
         }
       });
@@ -1611,7 +1651,8 @@ window.updateScDate=(wk,val)=>{gScWk(scY,scM,wk).dateRange=val;sSc();};
 function recalcScTotals(wk){
   const wd=gScWk(scY,scM,wk);
   let sum=0;
-  wd.rows[5].vals.forEach(v=>{ sum+=(parseInt(String(v).replace(/[^0-9]/g,''))||0); });
+  const totRow=wd.rows.find(r=>r.type==="total");
+  if(totRow) totRow.vals.slice(0,5).forEach(v=>{ sum+=scNum(v); });
   sum += (parseInt(String(wd.bonusAmt).replace(/[^0-9]/g,''))||0);
   wd.weekTotal=sum;
   const t=document.getElementById("sc_tot_inp_"+wk); if(t)t.value=fmtStr(sum);
@@ -1621,12 +1662,10 @@ function recalcScTotals(wk){
 }
 window.updateScVal=(wk,ri,vi,val)=>{
   const wd=gScWk(scY,scM,wk); wd.rows[ri].vals[vi]=val;
-  if(ri===3 || ri===4) {
-    // 그날 총 금액 = 보너스🍅(금액 그대로) + 큰파츠(1개당 1,000원)
-    const bonusTomato=parseInt(String(wd.rows[3].vals[vi]).replace(/[^0-9]/g,''))||0;
-    const bigParts=parseInt(String(wd.rows[4].vals[vi]).replace(/[^0-9]/g,''))||0;
-    const dayTot=bonusTomato+bigParts*1000;
-    wd.rows[5].vals[vi]=String(dayTot);
+  const totRow=wd.rows.find(r=>r.type==="total");
+  if(totRow && ["count","amt","mul","div"].includes(wd.rows[ri].type)) {
+    const dayTot=calcScDay(wd,vi);
+    totRow.vals[vi]=dayTot?String(dayTot):"";
     const cell=document.getElementById(`sc_day_tot_${wk}_${vi}`); if(cell)cell.value=fmtStr(dayTot);
     recalcScTotals(wk);
   }
@@ -2153,7 +2192,7 @@ function bScCard(){
         <td style="border:1px solid var(--sub-color); text-align:right; padding:8px;">₩${fmt(wt)}</td>
       </tr>`;
     }
-    mc.innerHTML=`<div style="font-size:22px;font-weight:700;color:var(--main-color);margin-bottom:12px;text-align:center;">🥄 ${scY}년 ${scM}월 랜덤스쿱</div>
+    mc.innerHTML=`<div style="font-size:22px;font-weight:700;color:var(--main-color);margin-bottom:12px;text-align:center;">🎟️ ${scY}년 ${scM}월 뽑기 저축</div>
     <table style="width:100%;border-collapse:collapse;border:2px solid var(--sub-color);background:#fff;font-size:14px;">
       <thead style="background:var(--sub-bg);">
         <tr>
@@ -2177,9 +2216,9 @@ function bScCard(){
       (row.vals || []).forEach((v,i)=>{ 
         if(i<5) {
             let disp = v || "";
-            if(disp !== "" && ri === 5) {
-                disp = fmt(v);
-            }
+            if(disp !== "" && row.type === "total") disp = fmt(v);
+            else if(disp !== "" && row.type === "mul") disp = "×"+disp;
+            else if(disp !== "" && row.type === "div") disp = "÷"+disp;
             tds+=`<td style="border:1px solid var(--sub-color);text-align:center;padding:8px;">${disp}</td>`;
         } 
       });
@@ -2197,7 +2236,7 @@ function bScCard(){
       }
       rows+=`<tr>${tds}</tr>`;
     });
-    mc.innerHTML=`<div style="font-size:20px;font-weight:700;color:var(--main-color);margin-bottom:12px;text-align:center;">🥄 ${scY}년 ${scM}월 ${scWk}주차 (${wd.dateRange||""})</div>
+    mc.innerHTML=`<div style="font-size:20px;font-weight:700;color:var(--main-color);margin-bottom:12px;text-align:center;">🎟️ ${scY}년 ${scM}월 ${scWk}주차 (${wd.dateRange||""})</div>
     <table class="sc-card-tbl" style="width:100%;border-collapse:collapse;border:2px solid var(--sub-color);background:#fff;font-size:14px;">
       <thead style="background:var(--sub-bg);">
         <tr>
@@ -2218,7 +2257,7 @@ window.dSC = function(){
   const mb2 = document.querySelector("#scmo .mb2"); const oldMax = mb2.style.maxHeight; const oldOver = mb2.style.overflowY;
   mb2.style.maxHeight = "none"; mb2.style.overflowY = "visible";
   setTimeout(()=>{ html2canvas(document.getElementById("scmf"),{scale:2,useCORS:true}).then(c=>{
-      const a=document.createElement("a");a.download="스쿱카드.png";a.href=c.toDataURL();a.click();
+      const a=document.createElement("a");a.download="뽑기카드.png";a.href=c.toDataURL();a.click();
       mb2.style.maxHeight = oldMax; mb2.style.overflowY = oldOver;
   }); }, 100);
 };
