@@ -1521,8 +1521,8 @@ window.aEF=()=>{gED(eY,eM).fixed.push({cat:eCats[0]?eCats[0].name:"",desc:"",amo
 window.aED=()=>{gED(eY,eM).dated.push({date:"",cat:eCats[0]?eCats[0].name:"",desc:"",amount:"",over:"",exclude:false});sE();rExp();};
 
 /* ================= 3: 랜덤스쿱 ================= */
-const SC_RULES_OLD_LIST=[["🍅 달성률 10%당 1스쿱🥄","🍅 네잎클로버 파츠는 한 번 더!🍀","🍅 100% 달성시 한 번 더! ✨","🍅 큰 파츠 개당 1,000원💎","🍅 주간 총 금액 다음 주에 매수! 💸"],["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️","🍅 10만원 / 5만원 / 1만원 / 5천원 💵","🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자","🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자","🍅 🐟 붕어빵 나오면 한 장 더!","🍅 주간 총 금액 다음 주에 매수! 💸"],["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️","🍅 10만원 / 5만원 / 1만원 / 5천원 💵","🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자","🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자","🍅 🐟 붕어빵·✖️ 곱하기·➗ 나누기 나오면 한 장 더!","🍅 하루 최대 3장까지! ✋","🍅 주간 총 금액 다음 주에 매수! 💸"]];
-const SC_RULES_DEF=()=>[["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️"],["🍅 10만원 / 5만원 / 1만원 / 5천원 💵"],["🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자"],["🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자"],["🍅 🐟 붕어빵·✖️ 곱하기·➗ 나누기 나오면 한 장 더!"],["🍅 주간 총 금액 다음 주에 매수! 💸"]];
+const SC_RULES_OLD_LIST=[["🍅 달성률 10%당 1스쿱🥄","🍅 네잎클로버 파츠는 한 번 더!🍀","🍅 100% 달성시 한 번 더! ✨","🍅 큰 파츠 개당 1,000원💎","🍅 주간 총 금액 다음 주에 매수! 💸"],["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️","🍅 10만원 / 5만원 / 1만원 / 5천원 💵","🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자","🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자","🍅 🐟 붕어빵 나오면 한 장 더!","🍅 주간 총 금액 다음 주에 매수! 💸"],["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️","🍅 10만원 / 5만원 / 1만원 / 5천원 💵","🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자","🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자","🍅 🐟 붕어빵·✖️ 곱하기·➗ 나누기 나오면 한 장 더!","🍅 하루 최대 3장까지! ✋","🍅 주간 총 금액 다음 주에 매수! 💸"],["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️","🍅 10만원 / 5만원 / 1만원 / 5천원 💵","🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자","🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자","🍅 🐟 붕어빵·✖️ 곱하기·➗ 나누기 나오면 한 장 더!","🍅 주간 총 금액 다음 주에 매수! 💸"]];
+const SC_RULES_DEF=()=>[["🍅 매일 종이를 뽑아서 나온 금액만큼 저축! 🎟️"],["🍅 10만원 / 5만원 / 1만원 / 5천원 💵"],["🍅 ✖️ 곱하기 나오면 그날 금액 × 숫자"],["🍅 ➗ 나누기 나오면 그날 금액 ÷ 숫자"],["🍅 ✖️ 곱하기·➗ 나누기 나오면 한 장 더!"],["🍅 주간 총 금액 다음 주에 매수! 💸"]];
 function gScRules(y,m){
   if(!scD[y])scD[y]={}; if(!scD[y][m])scD[y][m]={};
   let r = ensureArr(scD[y][m].rules); if(r.length===0) r=SC_RULES_DEF();
@@ -1533,7 +1533,7 @@ function gScRules(y,m){
 }
 // 뽑기 표 칸: 월~일 + 보너스 (보너스도 요일과 똑같이 계산)
 const SC_COLS=["월","화","수","목","금","토","일","보너스 🎁"];
-// 뽑기 표 행: count=장수×단가, mul=곱하기, div=나누기, note=기록만, total=그날 합계
+// 뽑기 표 행: count=장수×단가, mul=곱하기, div=나누기, total=그날 합계
 const SC_EMPTY=()=>["","","","","","","",""];
 const SC_ROWS_DEF=()=>[
   {label:"10만원 💵",type:"count",unit:100000,vals:SC_EMPTY()},
@@ -1542,7 +1542,6 @@ const SC_ROWS_DEF=()=>[
   {label:"5천원 💵",type:"count",unit:5000,vals:SC_EMPTY()},
   {label:"곱하기 ✖️",type:"mul",vals:SC_EMPTY()},
   {label:"나누기 ➗",type:"div",vals:SC_EMPTY()},
-  {label:"붕어빵 🐟",type:"note",vals:SC_EMPTY()},
   {label:"총 금액 💰",type:"total",vals:SC_EMPTY()}
 ];
 // 예전 랜덤스쿱 표: 입력값이 없으면 뽑기 표로 바꾸고, 기록이 있으면 그대로 보존
@@ -1575,7 +1574,8 @@ const SC_WK_DEF=(wk)=>({
 });
 function gScWk(y,m,wk){
   if(!scD[y])scD[y]={}; if(!scD[y][m])scD[y][m]={}; if(!scD[y][m]["w"+wk])scD[y][m]["w"+wk]=SC_WK_DEF(wk);
-  scD[y][m]["w"+wk].rows=migrateScRows(ensureArr(scD[y][m]["w"+wk].rows));
+  // 붕어빵(기록용) 행은 없앤 기능이라 빼고 불러옴
+  scD[y][m]["w"+wk].rows=migrateScRows(ensureArr(scD[y][m]["w"+wk].rows)).filter(r=>r.type!=="note");
   // 월~일 + 보너스 8칸 보장 (예전 기록이나 칸이 빠진 데이터도 표가 어긋나지 않게)
   scD[y][m]["w"+wk].rows.forEach(r=>{ const v=r.vals||{}; r.vals=Array.from({length:SC_COLS.length},(_,i)=>v[i]==null?"":v[i]); });
   return scD[y][m]["w"+wk];
@@ -1615,7 +1615,7 @@ function bSWUI(){
         if (row.type === "total") {
             cells+=`<td${bl}><input class="lt-inp" id="sc_day_tot_${wk}_${vi}" value="${fmtStr(v)}" readonly style="text-align:center;font-size:13px;padding:4px 0;background:var(--sub-bg);color:var(--text-muted);cursor:not-allowed;"></td>`;
         } else {
-            const ph = row.type==="mul"?"×":row.type==="div"?"÷":(row.type==="count"||row.type==="note")?"0":"";
+            const ph = row.type==="mul"?"×":row.type==="div"?"÷":row.type==="count"?"0":"";
             const im = row.type==="memo"?"":` inputmode="numeric"`;
             cells+=`<td${bl}><input class="lt-inp" value="${v||""}" placeholder="${ph}"${im} oninput="updateScVal(${wk},${ri},${vi},this.value)" style="text-align:center;font-size:13px;padding:4px 0;"></td>`;
         }
