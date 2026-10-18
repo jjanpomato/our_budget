@@ -670,7 +670,6 @@ input.ti:focus{border-color:var(--main-color);}
     <button class="tab-btn" onclick="swJp(1)">💳 커플 통장</button>
     <button class="tab-btn" onclick="swJp(2)">💍 결혼 예산</button>
     <button class="tab-btn" onclick="swJp(3)">👥 하객</button>
-    <button class="tab-btn" onclick="swJp(4)">🏦 CMA</button>
   </div>
 
   <!-- JP_TAB 0: 기존 공동 목표 대시보드 -->
@@ -951,6 +950,16 @@ input.ti:focus{border-color:var(--main-color);}
         💡 <b>예산</b>은 쓰기로 마음먹은 돈, <b>금액</b>은 실제로 계약하거나 쓴 돈이에요. 금액을 🥔짠감·🍅짠토 칸에 누가 얼마씩 내는지 나눠 적어요.<br>
         🧾 <b>낸 돈</b>은 계약금처럼 이미 보낸 돈이고, <b>잔금</b> = 금액 − 낸 돈이에요.
       </div>
+
+      <!-- 🏦 결혼자금 CMA: 짠토·짠감이 각자 CMA에 모은 돈과 목표 달성률 -->
+      <div class="mb" style="margin-top:8px;">
+        <h2>🏦 결혼자금 CMA</h2>
+        <span style="font-size:12px; color:var(--text-muted);">각자 CMA에 모은 돈과 목표 달성률이에요</span>
+      </div>
+      <div class="card-grid" id="cma_cards" style="margin-top:0;"></div>
+      <div id="cma_total" class="ws" style="background:var(--input-bg);"></div>
+      <div id="cma_side_bar" style="display:flex; gap:8px;"></div>
+      <div id="cma_body" style="display:flex; flex-direction:column; gap:12px;"></div>
     </div>
   </div>
 
@@ -976,22 +985,6 @@ input.ti:focus{border-color:var(--main-color);}
     </div>
   </div>
 
-  <!-- JP_TAB 4: 🏦 CMA 저축 (짠토·짠감 각자 CMA에 모은 돈) -->
-  <div id="jp_tab4" class="tab-page">
-    <div id="capture_cma" style="display:flex; flex-direction:column; gap:16px; width:100%;">
-
-      <div class="mb">
-        <h2>🏦 CMA 저축</h2>
-        <button class="sav" onclick="saveForSNS('capture_cma', 'CMA저축')">📸 SNS 저장</button>
-      </div>
-
-      <div class="card-grid" id="cma_cards" style="margin-top:0;"></div>
-      <div id="cma_total" class="ws" style="background:var(--input-bg);"></div>
-
-      <div id="cma_side_bar" style="display:flex; gap:8px;"></div>
-      <div id="cma_body" style="display:flex; flex-direction:column; gap:12px;"></div>
-    </div>
-  </div>
 </div>
 
 <!-- 랜덤스쿱 모달창 -->
@@ -1244,7 +1237,6 @@ function swJp(i) {
   else if(i===1) rCp();
   else if(i===2) rWd();
   else if(i===3) rGs();
-  else if(i===4) rCma();
 }
 
 /* ================= 데이터 세이브 함수 ================= */
@@ -2317,6 +2309,7 @@ window.loadWdTemplate = function() {
 };
 
 window.rWd = function() {
+  rCma();
   const w = gWd(), items = w.items;
   document.getElementById("wd_total").value = fmtStr(w.total);
   document.getElementById("wd_edit_btn").textContent = wdEdit ? "✅ 편집 완료" : "✏️ 분류 편집";
@@ -2613,7 +2606,7 @@ window.importGs = function() {
   alert(`플래너에서 하객 ${w.guests.groom.length + w.guests.bride.length}명, 청모 ${w.meetings.length}개를 가져왔어요! 👥`);
 };
 
-/* ================= 🏦 CMA 저축 탭 로직 ================= */
+/* ================= 🏦 결혼자금 CMA (💍 결혼 예산 탭 안) ================= */
 // 짠토·짠감이 각자 CMA에 얼마나 모았는지 적어요. 사람마다 { goal, start, rows:[{ id, date, type:"in"|"out"|"int", amount, memo }] }
 const CMA_PEOPLE = [
   { key: "zzanto",  label: "짠토", emoji: "🍅", color: "#e8453c", bg: "#fff0f0", bar: "linear-gradient(90deg,#e8453c,#ff7043)" },
