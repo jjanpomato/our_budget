@@ -211,10 +211,10 @@ input.ti:focus{border-color:var(--main-color);}
 @media (min-width:480px){
   .sc-card-tbl{table-layout:fixed;}
   .sc-card-tbl th, .sc-card-tbl td.sc-card-lbl{white-space:nowrap;font-size:12.5px;}
-  .sc-card-tbl th:nth-child(1),.sc-card-tbl td:nth-child(1){width:14%;}
-  .sc-card-tbl th:nth-child(n+2):nth-child(-n+6),.sc-card-tbl td:nth-child(n+2):nth-child(-n+6){width:11%;}
-  .sc-card-tbl th:nth-child(7),.sc-card-tbl td:nth-child(7){width:17%;}
-  .sc-card-tbl th:nth-child(8),.sc-card-tbl td:nth-child(8){width:14%;}
+  .sc-card-tbl th:nth-child(1),.sc-card-tbl td:nth-child(1){width:12%;}
+  .sc-card-tbl th:nth-child(n+2):nth-child(-n+8),.sc-card-tbl td:nth-child(n+2):nth-child(-n+8){width:8%;}
+  .sc-card-tbl th:nth-child(9),.sc-card-tbl td:nth-child(9){width:18%;}
+  .sc-card-tbl th:nth-child(10),.sc-card-tbl td:nth-child(10){width:14%;}
 }
 
 /* 🍅🥔 조인트 목표 탭 커스텀 게이지 */
@@ -1579,6 +1579,8 @@ const SC_WK_DEF=(wk)=>({
 function gScWk(y,m,wk){
   if(!scD[y])scD[y]={}; if(!scD[y][m])scD[y][m]={}; if(!scD[y][m]["w"+wk])scD[y][m]["w"+wk]=SC_WK_DEF(wk);
   scD[y][m]["w"+wk].rows=migrateScRows(ensureArr(scD[y][m]["w"+wk].rows));
+  // 월~일 7칸 보장 (예전 기록이나 칸이 빠진 데이터도 표가 어긋나지 않게)
+  scD[y][m]["w"+wk].rows.forEach(r=>{ const v=r.vals||{}; r.vals=Array.from({length:7},(_,i)=>v[i]==null?"":v[i]); });
   return scD[y][m]["w"+wk];
 }
 function onSP(){scY=parseInt(document.getElementById("scy").value)||CUR_Y;scM=parseInt(document.getElementById("scm").value)||CUR_M;bRT();bSWUI();}
@@ -1602,8 +1604,8 @@ function bSWUI(){
     const hd=document.createElement("div");hd.className="wcard-hd";
     hd.innerHTML=`<h3>${wk}주차</h3><input class="wdate-inp" value="${wd.dateRange||""}" placeholder="예: 8/1~8/7" oninput="updateScDate(${wk},this.value)"><div class="wtotal-badge" id="sctot${wk}">₩${fmt(wd.weekTotal)}</div>`;
     card.appendChild(hd);
-    const tbl=document.createElement("table");tbl.className="dt";tbl.style.minWidth="600px";tbl.style.tableLayout="fixed";
-    const days=["월","화","수","목","금"];
+    const tbl=document.createElement("table");tbl.className="dt";tbl.style.minWidth="740px";tbl.style.tableLayout="fixed";
+    const days=["월","화","수","목","금","토","일"];
     const thead=document.createElement("thead");
     thead.innerHTML="<tr><th style='width:90px;text-align:center;'>항목</th>"+days.map(d=>`<th style="text-align:center;width:60px;">${d}</th>`).join("")+"<th style='width:110px;text-align:center;'>보너스 조건</th><th style='width:90px;text-align:center;'>보너스 금액</th></tr>";
     tbl.appendChild(thead);
@@ -1612,7 +1614,7 @@ function bSWUI(){
       const tr=document.createElement("tr");
       let cells=`<td style="font-weight:700;color:var(--text-muted);font-size:12px;text-align:center;">${row.label}</td>`;
       row.vals.forEach((v,vi)=>{
-        if (vi < 5) { // 월~금
+        if (vi < 7) { // 월~일
             if (row.type === "total") {
                 cells+=`<td><input class="lt-inp" id="sc_day_tot_${wk}_${vi}" value="${fmtStr(v)}" readonly style="text-align:center;font-size:13px;padding:4px 0;background:var(--sub-bg);color:var(--text-muted);cursor:not-allowed;"></td>`;
             } else {
@@ -1639,7 +1641,7 @@ function bSWUI(){
     const wrap2=document.createElement("div");wrap2.style.overflowX="auto";wrap2.appendChild(tbl);
     card.appendChild(wrap2); 
     const totRow=document.createElement("div");totRow.style.cssText="display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--sub-color);";
-    totRow.innerHTML=`<span style="font-size:13px;font-weight:700;color:var(--text-muted);">주간 총금액 (월~금 + 보너스)</span><input class="ti" id="sc_tot_inp_${wk}" value="${fmtStr(wd.weekTotal)}" readonly style="max-width:160px;text-align:right;background:var(--sub-bg);color:var(--text-muted);cursor:not-allowed;">`;
+    totRow.innerHTML=`<span style="font-size:13px;font-weight:700;color:var(--text-muted);">주간 총금액 (월~일 + 보너스)</span><input class="ti" id="sc_tot_inp_${wk}" value="${fmtStr(wd.weekTotal)}" readonly style="max-width:160px;text-align:right;background:var(--sub-bg);color:var(--text-muted);cursor:not-allowed;">`;
     card.appendChild(totRow); wrap.appendChild(card);
   }
   document.getElementById("scpill").textContent="월 총 ₩"+fmt(totalAll);
@@ -1652,7 +1654,7 @@ function recalcScTotals(wk){
   const wd=gScWk(scY,scM,wk);
   let sum=0;
   const totRow=wd.rows.find(r=>r.type==="total");
-  if(totRow) totRow.vals.slice(0,5).forEach(v=>{ sum+=scNum(v); });
+  if(totRow) totRow.vals.slice(0,7).forEach(v=>{ sum+=scNum(v); });
   sum += (parseInt(String(wd.bonusAmt).replace(/[^0-9]/g,''))||0);
   wd.weekTotal=sum;
   const t=document.getElementById("sc_tot_inp_"+wk); if(t)t.value=fmtStr(sum);
@@ -2210,11 +2212,11 @@ function bScCard(){
       </tfoot>
     </table>`;
   } else {
-    const wd=gScWk(scY,scM,scWk); const days=["월","화","수","목","금"]; let rows="";
+    const wd=gScWk(scY,scM,scWk); const days=["월","화","수","목","금","토","일"]; let rows="";
     (wd.rows || []).forEach((row, ri)=>{
       let tds = `<td class="sc-card-lbl" style="border:1px solid var(--sub-color);font-weight:700;background:var(--sub-bg);text-align:center;padding:8px;">${row.label}</td>`;
       (row.vals || []).forEach((v,i)=>{ 
-        if(i<5) {
+        if(i<7) {
             let disp = v || "";
             if(disp !== "" && row.type === "total") disp = fmt(v);
             else if(disp !== "" && row.type === "mul") disp = "×"+disp;
